@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens - light */
+:root {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --surface: #ffffff;
+  --subtle: #f4f5f7;
+  --ink: #17191c;
+  --muted: #777d87;
+  --faint: #a3a8af;
+  --line: #e5e7eb;
+  --line-soft: #eef0f2;
+  --primary: #007aff;
+  --primary-ink: #ffffff;
+  --primary-soft: #e6f1ff;
+  --success: #16834a;
+  --success-soft: #e5f3ea;
+  --warning: #b45f06;
+  --warning-soft: #fbf0df;
+  --error: #dc4545;
+  --error-soft: #fbe8e6;
+  --info-soft: #eceef2;
+  --sidebar: #0d281f;
+  --sidebar-2: #102b23;
+  --sidebar-ink: #e9efe9;
+  --sidebar-muted: #8fa69b;
+  --sidebar-line: #1c3a30;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0d1210;
+  --card: #141a17;
+  --surface: #18201c;
+  --subtle: #1d2622;
+  --ink: #e8e6e0;
+  --muted: #959ba2;
+  --faint: #6b7178;
+  --line: #27312c;
+  --line-soft: #202924;
+  --primary: #3d8ef0;
+  --primary-ink: #ffffff;
+  --primary-soft: #16263a;
+  --success: #3fae72;
+  --success-soft: #15291e;
+  --warning: #e0952f;
+  --warning-soft: #2c2214;
+  --error: #ec6a6a;
+  --error-soft: #321a1a;
+  --info-soft: #1f2724;
+  --sidebar: #0a1d16;
+  --sidebar-2: #0c2119;
+  --sidebar-ink: #e3eae5;
+  --sidebar-muted: #7f978b;
+  --sidebar-line: #173328;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+  --color-info-soft: var(--info-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-2: var(--sidebar-2);
+  --color-sidebar-ink: var(--sidebar-ink);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-line: var(--sidebar-line);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 0.92em;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+::selection {
+  background: var(--primary-soft);
+}
+
+/* Thin, quiet scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.recharts-wrapper .recharts-cartesian-grid line {
+  stroke: var(--line-soft);
+}
+.recharts-text {
+  fill: var(--muted);
+}
+.recharts-surface:focus,
+.recharts-wrapper:focus,
+.recharts-sector:focus {
+  outline: none;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes pop-in {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.anim-fade { animation: fade-in 140ms ease-out; }
+
+/* Loading skeletons */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--subtle) 0%, var(--line-soft) 40%, var(--subtle) 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.anim-slide { animation: slide-in 180ms ease-out; }
+.anim-pop { animation: pop-in 160ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade, .anim-slide, .anim-pop, .skeleton { animation: none; }
+}
