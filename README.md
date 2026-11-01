@@ -19,7 +19,11 @@ Signing in with a merchant email (e.g. `accounts@acmecarhire.com`) opens that me
 **Settings → Reset demo data** regenerates everything.
 
 ### Mock data on/off
-The sign-in card has a **Mock data** switch. Off starts a brand-new, empty workspace with one freshly onboarded merchant (named from the sign-in email), so you can see exactly what new users see: empty states, chart placeholders and the getting-started checklists. Each mode keeps its own data in the browser.
+The sign-in card has a **Mock data** switch.
+- **On**: sample merchants and transactions stored in this browser, and any credentials work.
+- **Off**: live mode. You sign in with your Supabase user and data comes from the Oryne API (`https://apiv1.oryne.org`). Merchants, domains, status, pricing, business profile, settlement details, access requests, activity and notifications are real. Payments, payouts, expenses and SMS arrive with later backend phases; until then those pages show empty states and their actions say "not live yet".
+
+Live mode needs `.env.local` (see `.env.example`) with `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. The deployed API must list the dashboard's address in `ALLOWED_ORIGINS` (`http://localhost:5180` is allowed by default).
 
 ### Loading and error states
 All pages and key actions go through a simulated network layer (`src/lib/net.ts`). Pages show layout-matched skeletons the first time they load each session, and actions show spinners on their buttons (loaders from [ldrs](https://uiball.com/ldrs)). **Settings → Network simulation** sets response time and a failure rate to preview slow connections and error screens; **Replay loading** shows the skeletons again. When the FastAPI backend lands, `simulateRequest` is the single place to swap for real API calls.
@@ -56,6 +60,6 @@ src/
 - **Available balance** = collections - fees - SMS charges - refunds - pending settlement - payouts.
 - **Till reconciliation**: funds held = merchant funds owed + suspense + Oryne's retained share, with a difference of 0.00 (`/admin/reconciliation`).
 
-## Connecting a backend
+## Backend
 
-Replace `generateData()` and the functions in `useActions()` (`src/store/AppStore.tsx`) with calls to Oryne's own backend. The calculations in `src/lib/finance.ts` should move server-side, with the frontend displaying server-computed ledgers.
+The API is a separate project (`oryne-api`, FastAPI + Supabase on Render). `src/lib/api.ts` handles Supabase sign-in, calling the API, and mapping between the API's snake_case/cents and the dashboard's camelCase/KES. The "Request access" form always posts to the real API. Remaining mock-only actions in `useActions()` move to the API as each backend phase lands, and the calculations in `src/lib/finance.ts` move server-side with them.

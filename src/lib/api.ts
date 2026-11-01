@@ -48,7 +48,12 @@ export async function signOut(): Promise<void> {
   if (liveConfigured) await supabase().auth.signOut().catch(() => undefined)
 }
 
+/** Integration tests against a local API supply their own token instead of signing in through Supabase. */
+let tokenOverride: string | null = null
+export const setTestToken = (t: string | null) => { tokenOverride = t }
+
 async function token(): Promise<string | null> {
+  if (tokenOverride) return tokenOverride
   const { data } = await supabase().auth.getSession()
   return data.session?.access_token ?? null
 }
