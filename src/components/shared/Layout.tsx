@@ -238,11 +238,11 @@ function UserMenu() {
 export function ToastStack() {
   const { toasts, dismissToast } = useStore()
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[360px] max-w-[calc(100vw-32px)] flex-col gap-2" aria-live="polite">
+    <div className="pointer-events-none fixed right-4 top-4 z-[70] flex w-[360px] max-w-[calc(100vw-32px)] flex-col gap-2" aria-live="polite">
       {toasts.map((t) => {
         const Icon = t.tone === 'success' ? CheckCircle2 : t.tone === 'error' ? XCircle : Info
         return (
-          <div key={t.id} className="anim-pop pointer-events-auto flex gap-3 rounded-md border border-line bg-card px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.1)]">
+          <div key={t.id} className="anim-drop pointer-events-auto flex gap-3 rounded-md border border-line bg-card px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.1)]">
             <Icon size={16} strokeWidth={1.75} className={cx('mt-0.5 shrink-0', t.tone === 'success' ? 'text-success' : t.tone === 'error' ? 'text-error' : 'text-primary')} />
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium text-ink">{t.title}</div>

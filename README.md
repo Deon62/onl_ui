@@ -15,7 +15,7 @@ npm run build
 Sign in with a Supabase user that has dashboard access. Admins (super admin, ops, finance) get the admin console and can switch to **Merchant** view to see any merchant's dashboard. Merchant users only see their own business.
 
 ### Live data
-Sign in with a Supabase user that has dashboard access; all data comes from the Oryne API (`https://apiv1.oryne.org`). Merchants, domains, status, pricing, business profile, settlement details, merchant requests, logins, activity and notifications are live. Payments, payouts, expenses and SMS arrive with the payments phase; until then those pages show empty states and their actions say "not live yet".
+Sign in with a Supabase user that has dashboard access; all data comes from the Oryne API (`https://apiv1.oryne.org`). Merchants, domains, status, pricing, business profile, payout accounts and schedule, SMS alert settings, merchant requests, logins, activity and notifications are live. Payments, payouts, expenses and SMS credit arrive with the payments phase; until then those pages show empty states and their actions say "not live yet".
 
 ### Merchant requests
 "Request access" on the sign-in page (business, contact, phone, **website**) lands in **Admin → Merchant Requests**. **Set up account** creates the merchant with the details and pricing you choose, creates the owner's login with a generated password, and emails it via Resend. The password is also shown once with copy buttons, so you can send it yourself. **Send login** on a merchant's page issues a new password. Merchants change it under **Settings → Password**.
@@ -45,8 +45,8 @@ src/
 
 - Customers pay into **one Oryne business Till**. Merchants integrate nothing: Oryne runs the checkout pages and payment links, and sends the STK push itself.
 - Each payment gets a unique reference (e.g. `ACM-7KQ2PX`) stored against the merchant before the prompt is sent. The callback is matched on that reference and the M-Pesa receipt (duplicates are ignored). Direct Till payments with no reference are held in suspense until an admin attributes them.
-- Merchants choose where payouts go on their **Settlement** page: an M-Pesa number, a Till, a Paybill or a bank account, plus a payout schedule. Oryne remits via **M-Pesa B2C** (phones) or **B2B** (Tills and Paybills), both simulated, or records a **manual transfer** (banks).
-- **SMS payment alerts** are optional per merchant (Settings, or the merchant's "Collection & SMS" tab for admins). Each SMS is charged per recipient and deducted from the merchant balance. The price and the assumed gateway cost are set under Fees & Charges.
+- Merchants keep a list of payout accounts on their **Settlement** page (up to 5: M-Pesa numbers, Tills, Paybills or bank accounts). **Add account** opens a form; one account is the default, and payouts go there. The payout schedule sits beside the list. Oryne remits via **M-Pesa B2C** (phones) or **B2B** (Tills and Paybills), both simulated, or records a **manual transfer** (banks).
+- **SMS payment alerts** text the merchant's own phones (up to 3), never their customers, each time a payment is received. They are sent through Celcom Africa by the API, and **Send test** checks the numbers. Each SMS is charged per phone. The price and the assumed gateway cost are set under Fees & Charges.
 
 ## Accounting model
 

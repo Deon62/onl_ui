@@ -9,7 +9,7 @@ import { COLLECTED } from '../../lib/finance'
 import { fmtCompact, fmtInt, fmtKES, fmtPct } from '../../lib/format'
 import { DateRangeFilter } from '../shared/DateRangeFilter'
 import { axisProps, ChartCard, ChartTooltip, Legend, useChartColors } from '../shared/charts'
-import { BalanceStatement } from '../shared/FinancePanels'
+import { BalanceDonut } from '../shared/FinancePanels'
 import { TransactionsExplorer } from '../shared/TransactionsExplorer'
 import { Button, Card, Notice, PageHeader, StatCard } from '../shared/ui'
 import { GettingStarted } from '../shared/GettingStarted'
@@ -103,8 +103,8 @@ export function MerchantDashboard() {
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
-        <Card title="Account balance" subtitle="How your available balance is calculated" actions={<Link to="/merchant/payouts" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline">Payouts <ArrowRight size={13} /></Link>}>
-          <BalanceStatement ledger={ledger} />
+        <Card title="Balance" actions={<Link to="/merchant/payouts" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline">Payouts <ArrowRight size={13} /></Link>}>
+          <BalanceDonut ledger={ledger} />
         </Card>
       </div>
 

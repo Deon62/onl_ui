@@ -5,7 +5,7 @@ import { useStore } from '../../store/AppStore'
 import { useMerchantLedger, useMerchantScope } from '../../store/selectors'
 import { fmtKES } from '../../lib/format'
 import { displayDestination } from '../../lib/settlement'
-import { BalanceStatement, PayoutsTable } from '../shared/FinancePanels'
+import { BalanceDonut, PayoutsTable } from '../shared/FinancePanels'
 import { PayoutRequestModal } from '../shared/PayoutRequestModal'
 import { Button, Card, KeyValue, PageHeader, StatCard } from '../shared/ui'
 
@@ -34,7 +34,7 @@ export function MerchantPayoutsPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
         <Card flush title="Payout history"><PayoutsTable payouts={payouts} /></Card>
         <div className="space-y-4">
-          <Card title="Balance breakdown"><BalanceStatement ledger={ledger} /></Card>
+          <Card title="Balance"><BalanceDonut ledger={ledger} /></Card>
           <Card title="Payout settings">
             <KeyValue rows={[
               ['Schedule', merchant.payoutSchedule],

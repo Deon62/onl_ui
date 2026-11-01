@@ -152,6 +152,11 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 .anim-fade { animation: fade-in 140ms ease-out; }
+@keyframes drop-in {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.anim-drop { animation: drop-in 180ms ease-out; }
 
 /* Loading skeletons */
 @keyframes shimmer {
@@ -167,5 +172,5 @@ body {
 .anim-pop { animation: pop-in 160ms ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-fade, .anim-slide, .anim-pop, .skeleton { animation: none; }
+  .anim-fade, .anim-slide, .anim-pop, .anim-drop, .skeleton { animation: none; }
 }

@@ -1,30 +1,90 @@
 import { useMemo, useState, type ReactNode } from "react"
+import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts'
 import { Download } from 'lucide-react'
 import type { ActivityLog, Payout } from '../../types'
 import type { MerchantLedger } from '../../lib/finance'
 import { automatedRail, isMobileMoney } from '../../lib/settlement'
 import { useActions, useStore } from "../../store/AppStore"
 import { exportCsv } from '../../lib/csv'
-import { fmtAmount, fmtDateTime, fmtKES, fmtPhone, fmtRelative } from '../../lib/format'
+import { fmtAmount, fmtCompact, fmtDateTime, fmtKES, fmtPhone, fmtRelative } from '../../lib/format'
 import { DataTable, type Column } from './DataTable'
-import { Button, Drawer, IconButton, KeyValue, Mono, Select, Statement, StatusBadge } from './ui'
+import { Button, cx, Drawer, IconButton, KeyValue, Mono, Select, StatusBadge } from './ui'
+import { useChartColors } from './charts'
 
-export function BalanceStatement({ ledger }: { ledger: MerchantLedger }) {
+/** Where the merchant's collections went, as a donut: the slices add up to total collections */
+export function BalanceDonut({ ledger }: { ledger: MerchantLedger }) {
+  const c = useChartColors()
+  const [hover, setHover] = useState<number | null>(null)
+  const slices = [
+    { label: 'Available', value: Math.max(0, ledger.available), color: c.series[0] },
+    { label: 'Pending', value: ledger.pendingSettlement, color: c.series[1] },
+    { label: 'Paid out', value: ledger.paidOutNet, color: c.series[2] },
+    { label: 'In payout', value: ledger.payoutsInProgress, color: c.series[3] },
+    { label: 'Fees', value: ledger.fees + ledger.payoutFees + ledger.smsTopUpsFromBalance, color: c.series[4] },
+    { label: 'Refunds', value: ledger.refunds, color: c.other },
+  ]
+  const shown = slices.filter((x) => x.value > 0)
+  const total = shown.reduce((a, x) => a + x.value, 0)
+  const focus = hover !== null ? shown[hover] : null
+
   return (
-    <Statement
-      lines={[
-        { label: 'Total successful collections', value: fmtKES(ledger.grossCollections), note: `${ledger.collectionCount.toLocaleString()} payments received` },
-        { label: 'Oryne transaction fees', value: fmtKES(ledger.fees), kind: 'less' },
-        { label: 'Refunds and reversals', value: fmtKES(ledger.refunds), kind: 'less' },
-        { label: 'Net collections earned', value: fmtKES(ledger.netEarned), kind: 'subtotal' },
-        { label: 'Pending settlement', value: fmtKES(ledger.pendingSettlement), kind: 'less', note: 'Confirmed collections inside the settlement window' },
-        { label: 'Previous payouts', value: fmtKES(ledger.paidOut), kind: 'less', note: `${fmtKES(ledger.paidOutNet)} received + ${fmtKES(ledger.payoutFees)} payout fees` },
-        { label: 'Payouts in progress', value: fmtKES(ledger.payoutsInProgress), kind: 'less' },
-        ...(ledger.smsTopUpsFromBalance > 0 ? [{ label: 'SMS credit bought from balance', value: fmtKES(ledger.smsTopUpsFromBalance), kind: 'less' as const }] : []),
-        { label: 'Available merchant balance', value: fmtKES(ledger.available), kind: 'total' },
-      ]}
-    />
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative h-[156px] w-[156px] shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            {total > 0 ? (
+              <Pie
+                data={shown}
+                dataKey="value"
+                nameKey="label"
+                innerRadius={54}
+                outerRadius={76}
+                paddingAngle={shown.length > 1 ? 1.5 : 0}
+                stroke={c.surface}
+                strokeWidth={2}
+                cornerRadius={3}
+                startAngle={90}
+                endAngle={-270}
+                isAnimationActive={false}
+                onMouseEnter={(_, i) => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+              >
+                {shown.map((x, i) => <Cell key={x.label} fill={x.color} opacity={hover === null || hover === i ? 1 : 0.35} />)}
+              </Pie>
+            ) : (
+              <Pie data={[{ value: 1 }]} dataKey="value" innerRadius={54} outerRadius={76} fill={c.grid} stroke="none" isAnimationActive={false} />
+            )}
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-[11px] text-muted">{focus ? focus.label : 'Available'}</span>
+          <span className="num text-[15px] font-semibold text-ink">{fmtCompactKES(focus ? focus.value : ledger.available)}</span>
+          {focus && total > 0 && <span className="num text-[11px] text-muted">{Math.round((focus.value / total) * 100)}%</span>}
+        </div>
+      </div>
+      <ul className="w-full space-y-1.5 text-[12.5px]">
+        {(total > 0 ? shown : slices.slice(0, 1)).map((x, i) => (
+          <li
+            key={x.label}
+            className={cx('flex items-center justify-between gap-3 rounded-[4px] px-1.5 py-0.5 transition-opacity', hover !== null && hover !== i && 'opacity-45')}
+            onMouseEnter={() => total > 0 && setHover(i)}
+            onMouseLeave={() => setHover(null)}
+          >
+            <span className="flex items-center gap-2 text-muted"><span className="h-2.5 w-2.5 rounded-full" style={{ background: x.color }} />{x.label}</span>
+            <span className="num whitespace-nowrap font-medium text-ink">{fmtKES(x.value)}</span>
+          </li>
+        ))}
+        <li className="flex items-center justify-between gap-3 border-t border-line-soft px-1.5 pt-2">
+          <span className="text-muted">Collected</span>
+          <span className="num whitespace-nowrap text-muted">{fmtKES(ledger.grossCollections)}</span>
+        </li>
+      </ul>
+    </div>
   )
+}
+
+function fmtCompactKES(v: number) {
+  return Math.abs(v) >= 100_000 ? `KES ${fmtCompact(v)}` : fmtKES(v)
 }
 
 function destinationLabel(p: Payout) {

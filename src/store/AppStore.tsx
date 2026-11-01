@@ -5,7 +5,6 @@ import { DATA_VERSION, defaultConfig } from '../data/config'
 import { uid } from '../lib/rng'
 import { pageCache, setLiveLoader } from '../lib/net'
 import { ADMIN_ROLES, ApiError, getMe, live, loadWorkspace, signIn, signOut, type ApiMe, type LoginIssued } from '../lib/api'
-import { destinationFor } from '../lib/settlement'
 
 const SESSION_KEY = 'oryne-session'
 const THEME_KEY = 'oryne-theme'
@@ -255,13 +254,36 @@ export function useActions() {
         }, failed('Could not change status'))
       },
 
-      /** Rejections propagate to the caller's useAsyncAction, which shows the error inline. */
-      async updateSettlement(merchantId: string, method: Merchant['payoutMethod'], details: SettlementDetails, schedule: Merchant['payoutSchedule']) {
+      /** Payout accounts. These throw on failure so the caller's useAsyncAction can show the error inline. */
+      async addPayoutAccount(merchantId: string, method: Merchant['payoutMethod'], details: SettlementDetails, makeDefault: boolean) {
         const m = findMerchant(merchantId)
         if (!m) return
-        const saved = await live.updateSettlement(m, method, destinationFor(method, details), schedule, details, asAdmin)
-        putMerchant(saved)
-        toast({ tone: 'success', title: 'Settlement details saved' })
+        putMerchant(await live.addPayoutAccount(m, method, details, makeDefault, asAdmin))
+        toast({ tone: 'success', title: 'Payout account added' })
+      },
+
+      async setDefaultPayoutAccount(merchantId: string, accountId: string) {
+        const m = findMerchant(merchantId)
+        if (!m) return
+        putMerchant(await live.setDefaultPayoutAccount(m, accountId, asAdmin))
+        toast({ tone: 'success', title: 'Default account changed' })
+      },
+
+      async removePayoutAccount(merchantId: string, accountId: string) {
+        const m = findMerchant(merchantId)
+        if (!m) return
+        putMerchant(await live.removePayoutAccount(m, accountId, asAdmin))
+        toast({ tone: 'info', title: 'Payout account removed' })
+      },
+
+      async setPayoutSchedule(merchantId: string, schedule: Merchant['payoutSchedule']): Promise<boolean> {
+        const m = findMerchant(merchantId)
+        if (!m) return false
+        return live.setPayoutSchedule(m, schedule, asAdmin).then((saved) => {
+          putMerchant(saved)
+          toast({ tone: 'success', title: `Payouts set to ${schedule.toLowerCase()}` })
+          return true
+        }, failed('Could not change schedule'))
       },
 
       /** Set a new password for the merchant's owner and (optionally) email it. Throws on failure. */
@@ -312,7 +334,22 @@ export function useActions() {
       refundTransaction(_txId: string) { notYet('Refunds') },
       createPaymentLink(_merchantId: string, _title: string, _amount: number | null) { notYet('Payment links') },
       togglePaymentLink(_id: string) { notYet('Payment links') },
-      updateSmsAlerts(_merchantId: string, _enabled: boolean, _recipients: string[]) { notYet('SMS alerts') },
+      /** SMS alerts go to the merchant's own phones. Throws on failure. */
+      async updateSmsAlerts(merchantId: string, enabled: boolean, recipients: string[]) {
+        const m = findMerchant(merchantId)
+        if (!m) return
+        putMerchant(await live.updateSmsAlerts(m, enabled, recipients, asAdmin))
+        toast({ tone: 'success', title: enabled ? 'SMS alerts on' : 'SMS alerts off' })
+      },
+
+      /** Sends a sample alert to the saved numbers. Throws if it could not be sent. */
+      async testSms(merchantId: string) {
+        const m = findMerchant(merchantId)
+        if (!m) return
+        const r = await live.testSms(m, asAdmin)
+        if (r.sent.length === 0) throw new Error(r.error ?? 'The test SMS was not sent.')
+        toast({ tone: 'success', title: 'Test SMS sent', body: r.failed.length ? `Sent to ${r.sent.length}, failed for ${r.failed.length}.` : undefined })
+      },
       topUpSms(_merchantId: string, _amount: number, _method: SmsTopUp['method']): boolean {
         notYet('SMS credit')
         return false

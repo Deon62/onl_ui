@@ -61,6 +61,8 @@ export interface Merchant {
   payoutDestination: string
   /** Structured settlement account details set by the merchant on the Settlement page */
   settlement?: SettlementDetails
+  /** Accounts the merchant can be paid to; the default one is mirrored in payoutMethod / payoutDestination */
+  payoutAccounts?: PayoutAccount[]
   subscription: string // name of SubscriptionPlan, 'None' for no plan
   referencePrefix: string
   /** Optional paid SMS alert sent to the merchant for every payment received */
@@ -83,6 +85,15 @@ export interface SettlementDetails {
   accountName: string
   accountNumber: string
   updatedAt: string | null
+}
+
+export interface PayoutAccount {
+  id: string
+  method: PayoutMethod
+  destination: string
+  details: SettlementDetails
+  isDefault: boolean
+  createdAt: string | null
 }
 
 export interface SmsAlerts {

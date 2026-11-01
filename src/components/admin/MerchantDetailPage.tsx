@@ -11,7 +11,7 @@ import { calcFee, COLLECTED, describePricing, smsCreditBalance, txEconomics } fr
 import { fmtCompact, fmtKES, fmtPhone } from '../../lib/format'
 import { SmsAlertsPanel } from '../shared/SmsAlertsPanel'
 import { axisProps, ChartCard, ChartTooltip, useChartColors } from '../shared/charts'
-import { ActivityList, BalanceStatement, PayoutsTable } from '../shared/FinancePanels'
+import { ActivityList, BalanceDonut, PayoutsTable } from '../shared/FinancePanels'
 import { TransactionsExplorer } from '../shared/TransactionsExplorer'
 import { Button, Card, EmptyState, Field, Input, KeyValue, MerchantAvatar, Modal, Mono, Notice, Select, StatCard, StatusBadge, Tabs, Toggle } from '../shared/ui'
 import { MerchantFormModal } from './MerchantForm'
@@ -172,8 +172,8 @@ function Overview({ merchant, ledger }: { merchant: Merchant; ledger: NonNullabl
           ]} />
         </Card>
       </div>
-      <Card title="Balance statement" subtitle="All-time merchant ledger">
-        <BalanceStatement ledger={ledger} />
+      <Card title="Balance">
+        <BalanceDonut ledger={ledger} />
       </Card>
     </div>
   )

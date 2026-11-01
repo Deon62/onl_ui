@@ -37,7 +37,6 @@ export function SmsPage() {
   if (!merchant || !stats) return null
   const perPayment = smsPrice(merchant, data.config).fee || data.config.sms.feePerSms
   const alertsLeft = Math.floor(stats.credit / perPayment)
-  const low = merchant.smsAlerts.enabled && alertsLeft < 20
 
   const usageCols: Column<Transaction>[] = [
     { key: 'at', header: 'Sent', cell: (t) => <span className="text-muted">{fmtDateTime(t.confirmedAt!)}</span>, sort: (t) => t.confirmedAt! },
@@ -56,9 +55,8 @@ export function SmsPage() {
   return (
     <>
       <PageHeader title="SMS Alerts" actions={<Button variant="primary" icon={Plus} onClick={() => setOpen(true)} disabled={merchant.status !== 'Active'}>Top up</Button>} />
-      {low && <div className="mb-5"><Notice tone={alertsLeft === 0 ? 'error' : 'warning'} title={alertsLeft === 0 ? 'SMS credit exhausted - alerts are paused' : `Low SMS credit - about ${alertsLeft} alerts left`} /></div>}
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="SMS credit" icon={Wallet} value={fmtKES(stats.credit)} accent={stats.credit < perPayment ? 'var(--error)' : undefined} />
+        <StatCard label="SMS credit" icon={Wallet} value={fmtKES(stats.credit)} />
         <StatCard label="Alerts remaining" icon={MessageSquare} value={fmtInt(alertsLeft)} />
         <StatCard label="SMS sent this month" icon={Send} value={fmtInt(stats.monthCount)} />
         <StatCard label="Used this month" icon={CheckCircle2} value={fmtKES(stats.monthCharge)} />
@@ -68,7 +66,7 @@ export function SmsPage() {
         <Card flush>
           <div className="px-5 pt-3"><Tabs value={tab} onChange={setTab} tabs={[{ value: 'usage', label: 'Usage', count: stats.usage.length }, { value: 'topups', label: 'Top-ups', count: stats.topUps.length }]} /></div>
           {tab === 'usage'
-            ? <DataTable columns={usageCols} rows={stats.usage} rowKey={(t) => t.id} pageSize={10} dense emptyTitle="No alerts sent yet" emptyDescription={merchant.smsAlerts.enabled ? 'You will get an SMS for every payment you receive.' : 'Turn on SMS alerts to get a text for every payment.'} />
+            ? <DataTable columns={usageCols} rows={stats.usage} rowKey={(t) => t.id} pageSize={10} dense emptyTitle="No alerts sent yet" emptyDescription={merchant.smsAlerts.enabled ? 'Your phones get a text for every payment you receive.' : 'Turn on alerts to get a text on your phone for every payment.'} />
             : <DataTable columns={topCols} rows={stats.topUps} rowKey={(x) => x.id} pageSize={10} dense emptyTitle="No top-ups yet" emptyDescription="Top up SMS credit to start receiving payment alerts." />}
         </Card>
       </div>

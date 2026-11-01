@@ -1,7 +1,7 @@
 import { Component, useCallback, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
-import { LineWobble } from 'ldrs/react'
-import 'ldrs/react/LineWobble.css'
+import { DotPulse } from 'ldrs/react'
+import 'ldrs/react/DotPulse.css'
 import { AlertTriangle, RotateCw, WifiOff } from 'lucide-react'
 import { NetworkError, loadPage, pageCache } from '../../lib/net'
 import { Button, cx } from './ui'
@@ -10,11 +10,13 @@ import { PageSkeleton, PageSpinner, Skel } from './PageSkeletons'
 
 export { PageSkeleton, PageSpinner, Skel, Spinner }
 
-/** Slim animated bar across the top of the content while a page loads */
+/** Small floating pill with three pulsing dots, shown at the top of the content while a page loads */
 export function TopProgress() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] lg:left-[248px]" aria-hidden>
-      <LineWobble size={4000} stroke={2} bgOpacity={0.12} speed={1.4} color="var(--primary)" />
+    <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center lg:left-[248px]" role="status" aria-label="Loading">
+      <div className="flex h-8 items-center rounded-full border border-line bg-card px-3.5 shadow-sm anim-pop">
+        <DotPulse size={34} speed={1.2} color="var(--primary)" />
+      </div>
     </div>
   )
 }

@@ -89,7 +89,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     const err = (payload?.error ?? {}) as { code?: string; message?: string; details?: { fields?: { field: string; message: string }[] } }
     const field = err.details?.fields?.[0]
     const fieldMsg = field?.message.replace(/^Value error, /, '')
-    const message = field ? `${field.field.replace(/_/g, ' ')}: ${fieldMsg}` : err.message ?? `Request failed (${res.status}).`
+    const message = field ? (field.field ? `${field.field.replace(/_/g, ' ')}: ${fieldMsg}` : fieldMsg ?? 'Invalid value.') : err.message ?? `Request failed (${res.status}).`
     throw new ApiError(res.status, err.code ?? 'error', message)
   }
   return payload as T
@@ -109,6 +109,7 @@ export interface ApiMerchant {
   payout_schedule: PayoutSchedule; payout_method: PayoutMethod; payout_destination: string
   settlement: Record<string, string>; sms_alerts: { enabled?: boolean; recipients?: string[]; enabled_at?: string | null }
   subscription: string; domains: ApiDomain[]; created_at: string
+  payout_accounts?: { id: string; method: PayoutMethod; destination: string; details: Record<string, string>; is_default: boolean; created_at: string | null }[]
 }
 export interface ApiMe { user_id: string; email: string; role: ApiRole; merchant: ApiMerchant | null }
 interface ApiPage<T> { items: T[]; total: number }
@@ -166,6 +167,9 @@ export function toMerchant(m: ApiMerchant): Merchant {
     payoutMethod: m.payout_method,
     payoutDestination: m.payout_destination,
     settlement: toSettlement(m.settlement),
+    payoutAccounts: (m.payout_accounts ?? []).map((a) => ({
+      id: a.id, method: a.method, destination: a.destination, details: toSettlement(a.details) ?? emptySettlement(), isDefault: a.is_default, createdAt: a.created_at,
+    })),
     subscription: m.subscription || 'None',
     referencePrefix: m.reference_prefix,
     smsAlerts: { enabled: Boolean(m.sms_alerts?.enabled), recipients: m.sms_alerts?.recipients ?? [], enabledAt: m.sms_alerts?.enabled_at ?? null },
@@ -196,6 +200,8 @@ export const fromSettlement = (s: SettlementDetails) => ({
   phone: s.phone, till: s.till, paybill: s.paybill, paybill_account: s.paybillAccount, bank_name: s.bankName,
   bank_branch: s.bankBranch, account_name: s.accountName, account_number: s.accountNumber,
 })
+
+const scope = (m: Merchant, asAdmin: boolean) => (asAdmin ? `?merchant_id=${m.apiId}` : '')
 
 const toAccessRequest = (r: ApiAccessRequest): AccessRequest => ({
   id: r.id, business: r.business, name: r.contact_name, email: r.email, phone: r.phone, domain: r.domain, volume: r.volume,
@@ -275,6 +281,26 @@ export const live = {
     api<ApiMerchant>(`/v1/merchant/settlement${asAdmin ? `?merchant_id=${target.apiId}` : ''}`, {
       method: 'PUT', body: { payout_method: method, payout_destination: destination, payout_schedule: schedule, settlement: fromSettlement(s) },
     }).then(toMerchant),
+
+  addPayoutAccount: (target: Merchant, method: PayoutMethod, s: SettlementDetails, makeDefault: boolean, asAdmin: boolean) =>
+    api<ApiMerchant>(`/v1/merchant/payout-accounts${scope(target, asAdmin)}`, {
+      method: 'POST', body: { method, details: fromSettlement(s), make_default: makeDefault },
+    }).then(toMerchant),
+
+  setDefaultPayoutAccount: (target: Merchant, accountId: string, asAdmin: boolean) =>
+    api<ApiMerchant>(`/v1/merchant/payout-accounts/${accountId}/default${scope(target, asAdmin)}`, { method: 'POST' }).then(toMerchant),
+
+  removePayoutAccount: (target: Merchant, accountId: string, asAdmin: boolean) =>
+    api<ApiMerchant>(`/v1/merchant/payout-accounts/${accountId}${scope(target, asAdmin)}`, { method: 'DELETE' }).then(toMerchant),
+
+  setPayoutSchedule: (target: Merchant, schedule: PayoutSchedule, asAdmin: boolean) =>
+    api<ApiMerchant>(`/v1/merchant/payout-schedule${scope(target, asAdmin)}`, { method: 'PUT', body: { payout_schedule: schedule } }).then(toMerchant),
+
+  updateSmsAlerts: (target: Merchant, enabled: boolean, recipients: string[], asAdmin: boolean) =>
+    api<ApiMerchant>(`/v1/merchant/sms-alerts${scope(target, asAdmin)}`, { method: 'PUT', body: { enabled, recipients } }).then(toMerchant),
+
+  testSms: (target: Merchant, asAdmin: boolean) =>
+    api<{ sent: string[]; failed: string[]; error: string | null }>(`/v1/merchant/sms-alerts/test${scope(target, asAdmin)}`, { method: 'POST' }),
 
   requestAccess: (r: { business: string; name: string; email: string; phone: string; domain: string; volume: string; message: string }) =>
     api('/v1/access-requests', {
