@@ -105,7 +105,7 @@ export function PayoutRequestModal({ merchant, open, onClose, initiatedBy = 'Mer
             ['Destination', destText],
             ['Balance after payout', <span className="num">{fmtKES(ledger.available - quote.amount)}</span>],
           ]} />
-          <Notice tone="warning" title="Simulation only">No money will be transferred. The request is recorded in local demo state and will appear as Pending until approved by Oryne operations.</Notice>
+          <Notice tone="warning" title="Not live yet">Payout requests open with the payments phase. No money is transferred yet.</Notice>
           {(error || netError) && <Notice tone="error">{error || netError}</Notice>}
         </div>
       )}

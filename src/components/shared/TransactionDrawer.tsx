@@ -14,7 +14,6 @@ export function downloadReceipt(t: Transaction, merchantName: string) {
 <body style="font-family:Inter,Segoe UI,sans-serif;background:#FFFFFF;color:#17191C;padding:40px">
 <div style="max-width:440px;margin:auto;background:#FFFFFF;border:1px solid #E5E7EB;border-radius:8px;padding:28px">
 <div style="font-size:12px;letter-spacing:.08em;color:#777D87">ORYNE NETWORK - PAYMENT RECEIPT</div>
-<div style="margin-top:4px;font-size:11px;color:#B45F06;font-weight:600">DEMO DATA - NOT A VALID RECEIPT</div>
 <h2 style="margin:18px 0 4px">${fmtKES(t.amount)}</h2><div style="color:#777D87;font-size:13px">Paid to ${merchantName}</div>
 <table style="width:100%;margin-top:20px;font-size:13px;border-collapse:collapse">
 ${row('Transaction ID', t.id)}${row('Reference', t.reference)}${row('M-Pesa receipt', t.mpesaReceipt ?? '-')}
@@ -29,7 +28,7 @@ export function TransactionDrawer({ tx, onClose, mode }: { tx: Transaction | nul
   const actions = useActions()
   const [assignTo, setAssignTo] = useState('')
   const [confirmRefund, setConfirmRefund] = useState(false)
-  // Re-read from state so the drawer reflects live updates (e.g. simulated callbacks)
+  // Re-read from state so the drawer reflects live updates (e.g. callbacks arriving)
   const t = tx ? data.transactions.find((x) => x.id === tx.id) ?? tx : null
   if (!t) return null
   const merchant = data.merchants.find((m) => m.id === t.merchantId)
@@ -55,7 +54,7 @@ export function TransactionDrawer({ tx, onClose, mode }: { tx: Transaction | nul
           {mode === 'admin' && t.status === 'Successful' && (
             confirmRefund ? (
               <>
-                <span className="mr-auto self-center text-[12.5px] text-muted">Record a simulated refund?</span>
+                <span className="mr-auto self-center text-[12.5px] text-muted">Record a refund?</span>
                 <Button onClick={() => setConfirmRefund(false)}>Cancel</Button>
                 <Button variant="danger" onClick={() => { actions.refundTransaction(t.id); setConfirmRefund(false) }}>Confirm refund</Button>
               </>

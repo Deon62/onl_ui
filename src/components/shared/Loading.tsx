@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { LineWobble } from 'ldrs/react'
 import 'ldrs/react/LineWobble.css'
 import { AlertTriangle, RotateCw, WifiOff } from 'lucide-react'
-import { NetworkError, loadPage, pageCache, simulateRequest } from '../../lib/net'
+import { NetworkError, loadPage, pageCache } from '../../lib/net'
 import { Button, cx } from './ui'
 import { Spinner } from './Spinner'
 import { PageSkeleton, PageSpinner, Skel } from './PageSkeletons'
@@ -102,7 +102,7 @@ export function useAsyncAction() {
     setPending(true)
     setError(null)
     try {
-      return { ok: true, value: await simulateRequest(fn) }
+      return { ok: true, value: await fn() }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed. Please try again.')
       return { ok: false }

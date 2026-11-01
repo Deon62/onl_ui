@@ -276,6 +276,7 @@ const SKELETONS: [RegExp, () => ReactNode][] = [
     <Table rows={4} cols={4} />
   </>)],
   [/^\/admin\/activity$/, () => <Table rows={12} toolbar cols={5} />],
+  [/^\/admin\/requests$/, () => <Table rows={8} toolbar cols={5} />],
   [/^\/admin\/settings$/, () => (
     <div className="grid gap-4 xl:grid-cols-2"><Form fields={2} cols={2} /><Form fields={1} button={false} /><Lines n={5} /><Lines n={2} /><Form fields={2} button={false} /></div>
   )],

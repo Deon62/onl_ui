@@ -272,10 +272,16 @@ export interface AccessRequest {
   name: string
   email: string
   phone: string
+  /** The website the requester wants Oryne checkout on */
+  domain: string
   volume: string
   message: string
   status: 'New' | 'Approved' | 'Rejected'
   at: string
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  /** Merchant code created when the request was approved */
+  merchantId?: string | null
 }
 
 export interface DataState {

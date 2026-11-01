@@ -47,7 +47,7 @@ export function HelpPage() {
               <Field label="Subject"><Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Briefly describe the issue" /></Field>
               <Field label="Message"><Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Include transaction IDs or references where relevant" /></Field>
               <div className="flex justify-end">
-                <Button variant="primary" icon={LifeBuoy} disabled={!subject.trim() || !body.trim()} onClick={() => { toast({ tone: 'success', title: 'Support request sent (demo)', body: `Ticket ORY-SUP-${Math.floor(1000 + Math.random() * 9000)} created for ${merchant.name}.` }); setSubject(''); setBody('') }}>Send request</Button>
+                <Button variant="primary" icon={LifeBuoy} disabled={!subject.trim() || !body.trim()} onClick={() => { window.location.href = `mailto:support@oryne.org?subject=${encodeURIComponent(`[${merchant.id}] ${subject}`)}&body=${encodeURIComponent(body)}`; toast({ tone: 'info', title: 'Opening your email app', body: 'Send the message to reach Oryne support.' }) }}>Send request</Button>
               </div>
             </div>
           </Card>

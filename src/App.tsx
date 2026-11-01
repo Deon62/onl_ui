@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import {
-  Activity, ArrowLeftRight, Banknote, BarChart3, Building2, HelpCircle, LayoutDashboard,
+  Activity, ArrowLeftRight, Inbox, Banknote, BarChart3, Building2, HelpCircle, LayoutDashboard,
   Landmark, Link2, MessageSquare, Network, Percent, Radio, Receipt, Scale, Settings, TrendingUp, UserRound, Wallet,
 } from 'lucide-react'
 import { useStore } from './store/AppStore'
@@ -9,6 +9,7 @@ import { LoginPage } from './pages/Login'
 import { AdminDashboard } from './components/admin/AdminDashboard'
 import { MerchantsPage } from './components/admin/MerchantsPage'
 import { MerchantDetailPage } from './components/admin/MerchantDetailPage'
+import { RequestsPage } from './components/admin/RequestsPage'
 import { AdminTransactionsPage } from './components/admin/TransactionsPage'
 import { CollectionsPage } from './components/admin/CollectionsPage'
 import { AdminPayoutsPage } from './components/admin/PayoutsPage'
@@ -43,6 +44,7 @@ function AdminLayout() {
   if (!ready) return <Connecting />
   if (session.role === 'merchant') return <Navigate to="/merchant" replace />
   const unmatched = data.transactions.filter((t) => t.status === 'Unmatched').length
+  const newRequests = (data.accessRequests ?? []).filter((r) => r.status === 'New').length
   const pendingPayouts = data.payouts.filter((p) => p.status === 'Pending').length
   const sections: NavSection[] = [
     {
@@ -50,6 +52,7 @@ function AdminLayout() {
       items: [
         { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/admin/merchants', label: 'Merchants', icon: Building2 },
+        { to: '/admin/requests', label: 'Merchant Requests', icon: Inbox, badge: newRequests },
         { to: '/admin/transactions', label: 'Transactions', icon: ArrowLeftRight },
         { to: '/admin/collections', label: 'Payment Collections', icon: Network, badge: unmatched },
         { to: '/admin/payouts', label: 'Payouts', icon: Wallet, badge: pendingPayouts },
@@ -126,6 +129,7 @@ export default function App() {
         <Route index element={<AdminDashboard />} />
         <Route path="merchants" element={<MerchantsPage />} />
         <Route path="merchants/:id" element={<MerchantDetailPage />} />
+        <Route path="requests" element={<RequestsPage />} />
         <Route path="transactions" element={<AdminTransactionsPage />} />
         <Route path="collections" element={<CollectionsPage />} />
         <Route path="payouts" element={<AdminPayoutsPage />} />

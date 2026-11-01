@@ -144,7 +144,7 @@ function TopUpModal({ onClose, perPayment }: { onClose: () => void; perPayment: 
             { label: 'Top-up', value: fmtKES(value || 0) },
             { label: <span>Alerts this buys <Badge className="ml-1">{fmtKES(perPayment)} each</Badge></span>, value: fmtInt(Math.floor((value || 0) / perPayment)), kind: 'total' },
           ]} />
-          <p className="text-[12px] text-muted">Simulation only - no STK push is sent and no money moves. {data.config.sms.feePerSms > 0 && `Price: ${fmtKES(data.config.sms.feePerSms)} per SMS.`}</p>
+          <p className="text-[12px] text-muted">SMS credit top-ups go live with the payments phase. {data.config.sms.feePerSms > 0 && `Price: ${fmtKES(data.config.sms.feePerSms)} per SMS.`}</p>
         </div>
       )}
     </Modal>

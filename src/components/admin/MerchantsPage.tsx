@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Download, Plus } from 'lucide-react'
 import type { Merchant } from '../../types'
-import { useActions, useStore } from '../../store/AppStore'
+import { useStore } from '../../store/AppStore'
 import { useAllLedgers } from '../../store/selectors'
 import { exportCsv } from '../../lib/csv'
-import { fmtAmount, fmtDate, fmtKES, fmtPhone, fmtRelative } from '../../lib/format'
+import { fmtAmount, fmtDate, fmtKES } from '../../lib/format'
 import { DataTable, type Column } from '../shared/DataTable'
 import { Button, Card, MerchantAvatar, Mono, PageHeader, SearchInput, Select, StatCard, StatusBadge } from '../shared/ui'
 import { MerchantFormModal } from './MerchantForm'
@@ -85,7 +85,6 @@ export function MerchantsPage() {
         <StatCard label="Available balances" value={fmtKES(totals.available)} hint={`${fmtKES(totals.pending)} pending settlement`} />
         <StatCard label="Total paid out" value={fmtKES(totals.paid)} hint="net sent to merchants" />
       </div>
-      <AccessRequests />
       <Card flush>
         <div className="flex flex-col gap-2.5 border-b border-line-soft px-5 py-4 sm:flex-row">
           <SearchInput value={q} onChange={setQ} placeholder="Search name, ID, domain or email" className="sm:w-[320px]" />
@@ -100,29 +99,3 @@ export function MerchantsPage() {
   )
 }
 
-/** New "Request access" submissions from the sign-in page, awaiting review */
-function AccessRequests() {
-  const { data } = useStore()
-  const actions = useActions()
-  const pending = (data.accessRequests ?? []).filter((r) => r.status === 'New')
-  if (!pending.length) return null
-  return (
-    <Card title="Access requests" subtitle={`${pending.length} waiting for review. Approving creates the merchant as Pending Review.`} className="mb-6" bodyClassName="p-0">
-      <ul className="divide-y divide-line-soft">
-        {pending.map((r) => (
-          <li key={r.id} className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1 leading-tight">
-              <div className="text-[13.5px] font-medium text-ink">{r.business}</div>
-              <div className="mt-1 text-[12.5px] text-muted">{r.name} · {r.email} · {fmtPhone(r.phone)} · {r.volume} · {fmtRelative(r.at)}</div>
-              {r.message && <div className="mt-1 text-[12.5px] text-muted">"{r.message}"</div>}
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <Button size="sm" onClick={() => actions.rejectAccessRequest(r.id)}>Reject</Button>
-              <Button size="sm" variant="primary" onClick={() => actions.approveAccessRequest(r.id)}>Approve</Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </Card>
-  )
-}

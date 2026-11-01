@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '../../store/AppStore'
 import { fmtRelative } from '../../lib/format'
-import { cx, DemoBadge, IconButton, MerchantAvatar } from './ui'
+import { cx, IconButton, MerchantAvatar } from './ui'
 import { LogoMark } from './LogoMark'
 import { RouteLoader } from './Loading'
 import { ROLE_LABEL, type ApiRole } from '../../lib/api'
@@ -114,15 +114,7 @@ function Notifications({ audience }: { audience: string }) {
   )
 }
 
-function LiveBadge() {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-line px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-success">
-      <span className="h-1.5 w-1.5 rounded-full bg-success" /> Live
-    </span>
-  )
-}
-
-/** Admin / Merchant mode toggle - available to every signed-in demo user */
+/** Admin / Merchant view toggle for admins (merchant users only see their own dashboard) */
 function ModeSwitch() {
   const { data, session, viewAsMerchant } = useStore()
   const navigate = useNavigate()
@@ -265,7 +257,7 @@ export function ToastStack() {
 }
 
 export function AppShell({ sections, audience, sidebarFooter, banner }: { sections: NavSection[]; audience: string; sidebarFooter?: ReactNode; banner?: ReactNode }) {
-  const { theme, toggleTheme, dataMode } = useStore()
+  const { theme, toggleTheme } = useStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
   useEffect(() => { window.scrollTo(0, 0) }, [location.pathname])
@@ -289,8 +281,6 @@ export function AppShell({ sections, audience, sidebarFooter, banner }: { sectio
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-bg/90 px-4 backdrop-blur sm:px-6 lg:px-8">
           <IconButton icon={Menu} label="Open navigation" className="lg:hidden" onClick={() => setMobileOpen(true)} />
           <div className="lg:hidden"><Logo light={false} compact /></div>
-          {dataMode === 'mock' ? <DemoBadge /> : <LiveBadge />}
-          <span className="hidden text-[12px] text-muted md:inline">{dataMode === 'mock' ? 'Prototype - no real payments are processed' : 'Payments go live in the next phase'}</span>
           <div className="ml-auto flex items-center gap-1.5">
             <ModeSwitch />
             <MerchantSwitcher />

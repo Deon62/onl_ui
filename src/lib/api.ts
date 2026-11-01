@@ -7,8 +7,7 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { AccessRequest, ActivityLog, DataState, Merchant, Notification, PayoutMethod, PayoutSchedule, SettlementDetails } from '../types'
-import { defaultConfig } from '../data/merchants'
-import { DATA_VERSION } from '../data/generate'
+import { DATA_VERSION, defaultConfig } from '../data/config'
 import { emptySettlement } from './settlement'
 
 export const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || 'https://apiv1.oryne.org'
@@ -48,6 +47,12 @@ export async function signOut(): Promise<void> {
   if (liveConfigured) await supabase().auth.signOut().catch(() => undefined)
 }
 
+/** The signed-in user changes their own password. */
+export async function changePassword(password: string): Promise<void> {
+  const { error } = await supabase().auth.updateUser({ password })
+  if (error) throw new ApiError(400, 'password_rejected', error.message)
+}
+
 /** Integration tests against a local API supply their own token instead of signing in through Supabase. */
 let tokenOverride: string | null = null
 export const setTestToken = (t: string | null) => { tokenOverride = t }
@@ -83,7 +88,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   if (!res.ok) {
     const err = (payload?.error ?? {}) as { code?: string; message?: string; details?: { fields?: { field: string; message: string }[] } }
     const field = err.details?.fields?.[0]
-    const message = field ? `${field.field.replace(/_/g, ' ')}: ${field.message}` : err.message ?? `Request failed (${res.status}).`
+    const fieldMsg = field?.message.replace(/^Value error, /, '')
+    const message = field ? `${field.field.replace(/_/g, ' ')}: ${fieldMsg}` : err.message ?? `Request failed (${res.status}).`
     throw new ApiError(res.status, err.code ?? 'error', message)
   }
   return payload as T
@@ -109,9 +115,14 @@ interface ApiPage<T> { items: T[]; total: number }
 interface ApiActivity { id: string; actor: string; role: string; action: string; target: string; merchant_id: string | null; at: string }
 interface ApiNotification { id: string; audience: string; title: string; body: string; read: boolean; created_at: string }
 interface ApiAccessRequest {
-  id: string; business: string; contact_name: string; email: string; phone: string; volume: string; message: string
-  status: AccessRequest['status']; created_at: string
+  id: string; business: string; contact_name: string; email: string; phone: string; domain: string; volume: string; message: string
+  status: AccessRequest['status']; merchant_id: string | null; reviewed_by: string | null; reviewed_at: string | null; created_at: string
 }
+
+/** A merchant owner's sign-in details. The password is shown once and never stored. */
+export interface LoginIssued { email: string; password: string; loginUrl: string; emailSent: boolean; emailError: string | null }
+interface ApiLoginIssued { email: string; password: string; login_url: string; email_sent: boolean; email_error: string | null }
+const toLogin = (l: ApiLoginIssued): LoginIssued => ({ email: l.email, password: l.password, loginUrl: l.login_url, emailSent: l.email_sent, emailError: l.email_error })
 
 export const ADMIN_ROLES: ApiRole[] = ['super_admin', 'ops', 'finance']
 export const ROLE_LABEL: Record<ApiRole, string> = {
@@ -179,14 +190,16 @@ export function fromMerchant(m: Partial<Merchant>): Json {
   return out
 }
 
+const newMerchantBody = (m: Partial<Merchant>, status: Merchant['status']) => ({ ...fromMerchant(m), status, domains: m.domain ? [m.domain] : [] })
+
 export const fromSettlement = (s: SettlementDetails) => ({
   phone: s.phone, till: s.till, paybill: s.paybill, paybill_account: s.paybillAccount, bank_name: s.bankName,
   bank_branch: s.bankBranch, account_name: s.accountName, account_number: s.accountNumber,
 })
 
 const toAccessRequest = (r: ApiAccessRequest): AccessRequest => ({
-  id: r.id, business: r.business, name: r.contact_name, email: r.email, phone: r.phone, volume: r.volume,
-  message: r.message, status: r.status, at: r.created_at,
+  id: r.id, business: r.business, name: r.contact_name, email: r.email, phone: r.phone, domain: r.domain, volume: r.volume,
+  message: r.message, status: r.status, at: r.created_at, reviewedBy: r.reviewed_by, reviewedAt: r.reviewed_at,
 })
 
 // ---------------------------------------------------------------------------
@@ -205,7 +218,7 @@ export async function loadWorkspace(me: ApiMe): Promise<DataState> {
     admin ? api<ApiPage<ApiMerchant>>('/v1/admin/merchants?limit=200').then((p) => p.items) : Promise.resolve(me.merchant ? [me.merchant] : []),
     admin ? api<ApiPage<ApiActivity>>('/v1/admin/activity?limit=200').then((p) => p.items) : Promise.resolve([] as ApiActivity[]),
     api<ApiNotification[]>('/v1/notifications?limit=100'),
-    admin ? api<ApiPage<ApiAccessRequest>>('/v1/admin/access-requests?limit=100').then((p) => p.items) : Promise.resolve([] as ApiAccessRequest[]),
+    admin ? api<ApiPage<ApiAccessRequest>>('/v1/admin/access-requests?limit=200').then((p) => p.items) : Promise.resolve([] as ApiAccessRequest[]),
   ])
   const byUuid = new Map(merchants.map((m) => [m.id, m.code]))
   const code = (uuid: string | null) => (uuid ? byUuid.get(uuid) ?? null : null)
@@ -227,7 +240,7 @@ export async function loadWorkspace(me: ApiMe): Promise<DataState> {
     notifications: notifications.map((n): Notification => ({
       id: n.id, audience: n.audience === 'admin' ? 'admin' : code(n.audience) ?? n.audience, title: n.title, body: n.body, at: n.created_at, read: n.read,
     })),
-    accessRequests: accessRequests.map(toAccessRequest),
+    accessRequests: accessRequests.map((r) => ({ ...toAccessRequest(r), merchantId: code(r.merchant_id) })),
     config: structuredClone(defaultConfig),
   }
 }
@@ -238,7 +251,7 @@ export async function loadWorkspace(me: ApiMe): Promise<DataState> {
 
 export const live = {
   createMerchant: (m: Partial<Merchant>, status: Merchant['status']) =>
-    api<ApiMerchant>('/v1/admin/merchants', { method: 'POST', body: { ...fromMerchant(m), status, domains: m.domain ? [m.domain] : [] } }).then(toMerchant),
+    api<ApiMerchant>('/v1/admin/merchants', { method: 'POST', body: newMerchantBody(m, status) }).then(toMerchant),
 
   async updateMerchant(target: Merchant, patch: Partial<Merchant>): Promise<Merchant> {
     // Domains are separate resources: add the new one before removing the old, so a failure never leaves none.
@@ -263,11 +276,21 @@ export const live = {
       method: 'PUT', body: { payout_method: method, payout_destination: destination, payout_schedule: schedule, settlement: fromSettlement(s) },
     }).then(toMerchant),
 
-  requestAccess: (r: { business: string; name: string; email: string; phone: string; volume: string; message: string }) =>
-    api('/v1/access-requests', { method: 'POST', auth: false, body: { business: r.business, contact_name: r.name, email: r.email, phone: r.phone, volume: r.volume, message: r.message } }),
+  requestAccess: (r: { business: string; name: string; email: string; phone: string; domain: string; volume: string; message: string }) =>
+    api('/v1/access-requests', {
+      method: 'POST', auth: false,
+      body: { business: r.business, contact_name: r.name, email: r.email, phone: r.phone, domain: r.domain, volume: r.volume, message: r.message },
+    }),
 
-  approveAccessRequest: (id: string) => api<ApiMerchant>(`/v1/admin/access-requests/${id}/approve`, { method: 'POST' }).then(toMerchant),
-  rejectAccessRequest: (id: string) => api(`/v1/admin/access-requests/${id}/reject`, { method: 'POST', body: { reason: '' } }),
+  approveAccessRequest: (id: string, account: Partial<Merchant>, sendEmail: boolean) =>
+    api<{ merchant: ApiMerchant; login: ApiLoginIssued }>(`/v1/admin/access-requests/${id}/approve`, {
+      method: 'POST', body: { merchant: newMerchantBody(account, account.status ?? 'Active'), send_email: sendEmail },
+    }).then((r) => ({ merchant: toMerchant(r.merchant), login: toLogin(r.login) })),
+
+  rejectAccessRequest: (id: string, reason: string) => api(`/v1/admin/access-requests/${id}/reject`, { method: 'POST', body: { reason } }),
+
+  sendLogin: (merchantApiId: string, sendEmail: boolean) =>
+    api<ApiLoginIssued>(`/v1/admin/merchants/${merchantApiId}/login`, { method: 'POST', body: { send_email: sendEmail } }).then(toLogin),
 
   markRead: (audienceUuid: string) => api(`/v1/notifications/read?audience=${encodeURIComponent(audienceUuid)}`, { method: 'POST' }),
 }

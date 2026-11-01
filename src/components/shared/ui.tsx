@@ -125,14 +125,6 @@ export function SectionLabel({ children }: { children: ReactNode }) {
   return <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{children}</div>
 }
 
-export function DemoBadge({ className, children = 'Demo data' }: { className?: string; children?: ReactNode }) {
-  return (
-    <span className={cx('inline-flex items-center gap-1 rounded-[4px] border border-warning/40 bg-warning-soft px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-warning', className)}>
-      {children}
-    </span>
-  )
-}
-
 export function Notice({ tone = 'info', title, children, icon }: { tone?: 'info' | 'warning' | 'success' | 'error'; title?: ReactNode; children?: ReactNode; icon?: LucideIcon }) {
   const t = {
     info: ['bg-info-soft border-line', 'text-muted', HelpCircle],
@@ -195,6 +187,9 @@ const STATUS_MAP: Record<string, [Tone, LucideIcon]> = {
   Cancelled: ['neutral', Ban],
   Suspended: ['error', Ban],
   Revoked: ['neutral', Ban],
+  New: ['info', CircleDashed],
+  Approved: ['success', CheckCircle2],
+  Rejected: ['neutral', Ban],
   Disabled: ['neutral', Ban],
   Reversed: ['neutral', RotateCcw],
   Refunded: ['neutral', Undo2],

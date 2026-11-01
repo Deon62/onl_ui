@@ -4,7 +4,8 @@ import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { useActions, useStore } from '../store/AppStore'
 import { normalizePhone } from '../lib/format'
 import { Logo } from '../components/shared/Layout'
-import { Select, Toggle } from '../components/shared/ui'
+import { Select } from '../components/shared/ui'
+import { PasswordInput } from '../components/shared/Password'
 import { Spinner } from '../components/shared/Spinner'
 import { useAsyncAction } from '../components/shared/Loading'
 
@@ -37,8 +38,7 @@ export function LoginPage() {
 }
 
 function LoginForm({ onRequest }: { onRequest: () => void }) {
-  const { login, dataMode } = useStore()
-  const [mock, setMock] = useState(dataMode === 'mock')
+  const { login } = useStore()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,11 +49,11 @@ function LoginForm({ onRequest }: { onRequest: () => void }) {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    if (!mock && (!email.trim() || !password)) {
+    if (!email.trim() || !password) {
       setLoading(false)
       return setError('Enter your email and password.')
     }
-    login(email, password, mock)
+    login(email, password)
       .then((res) => {
         if (!res.ok) return setError(res.error)
         navigate(res.role === 'merchant' ? '/merchant' : '/admin', { replace: true })
@@ -66,18 +66,11 @@ function LoginForm({ onRequest }: { onRequest: () => void }) {
       <form onSubmit={submit} className="anim-fade border border-line bg-card p-8">
         <h2 className="text-[18px] font-semibold tracking-[-0.01em]">Sign in</h2>
         <SharpField label="Email" className="mt-7">
-          <input className={sharpInput} type="text" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+          <input className={sharpInput} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
         </SharpField>
         <SharpField label="Password" className="mt-4">
-          <input className={sharpInput} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput inputClassName={sharpInput} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </SharpField>
-        <div className="mt-5 flex items-center justify-between gap-4 border-t border-line-soft pt-4">
-          <div>
-            <div className="text-[12.5px] font-medium text-ink">Mock data</div>
-            <div className="text-[12px] text-muted">{mock ? 'Sample data, any credentials work' : 'Live data from the Oryne API'}</div>
-          </div>
-          <Toggle checked={mock} onChange={setMock} label="Use mock data" />
-        </div>
         {error && <p role="alert" className="mt-3 text-[12.5px] text-error">{error}</p>}
         <button type="submit" disabled={loading} className={primaryBtn}>
           {loading ? <><Spinner size={15} /> Signing in</> : <>Sign in <ArrowRight size={15} /></>}
@@ -91,7 +84,13 @@ function LoginForm({ onRequest }: { onRequest: () => void }) {
   )
 }
 
-const empty = { business: '', name: '', email: '', phone: '', volume: '', message: '' }
+const empty = { business: '', name: '', email: '', phone: '', domain: '', volume: '', message: '' }
+
+/** "https://www.Shop.co.ke/path" -> "shop.co.ke"; null if it is not a domain */
+function cleanDomain(raw: string): string | null {
+  const d = raw.trim().toLowerCase().replace(/^[a-z]+:\/\//, '').split(/[/?#]/)[0].replace(/:\d+$/, '').replace(/^www\./, '').replace(/\.$/, '')
+  return /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(d) ? d : null
+}
 
 function RequestForm({ onBack }: { onBack: () => void }) {
   const actions = useActions()
@@ -104,9 +103,11 @@ function RequestForm({ onBack }: { onBack: () => void }) {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!normalizePhone(f.phone)) return setError('Enter a valid Kenyan phone number.')
+    const domain = cleanDomain(f.domain)
+    if (!domain) return setError('Enter your website, e.g. mybusiness.co.ke')
     if (!f.volume) return setError('Select your expected monthly volume.')
     setError(null)
-    void run(() => actions.requestAccess(f)).then((r) => { if (r.ok) setSent(true) })
+    void run(() => actions.requestAccess({ ...f, domain })).then((r) => { if (r.ok) setSent(true) })
   }
 
   if (sent) {
@@ -140,6 +141,9 @@ function RequestForm({ onBack }: { onBack: () => void }) {
           <input className={sharpInput} value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="07XX XXX XXX" required autoComplete="tel" />
         </SharpField>
       </div>
+      <SharpField label="Website" className="mt-4">
+        <input className={sharpInput} value={f.domain} onChange={(e) => set('domain', e.target.value)} placeholder="mybusiness.co.ke" required autoComplete="url" inputMode="url" />
+      </SharpField>
       <SharpField label="Expected monthly volume" className="mt-4" as="div">
         <Select value={f.volume} onChange={(e) => set('volume', e.target.value)} placeholder="Select" className="h-10! rounded-none!" aria-label="Expected monthly volume">
           <option>Under KES 100,000</option>

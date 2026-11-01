@@ -51,7 +51,7 @@ export function FeesPage() {
           </div>
           <p className="mt-3 text-[12.5px] text-muted">{describePricing(pricing)}</p>
         </Card>
-        <Card title="Provider cost assumptions" subtitle={<span className="flex items-center gap-2">Mock values - not verified provider pricing <Badge tone="warning">Unverified</Badge></span>}>
+        <Card title="Provider cost assumptions" subtitle={<span className="flex items-center gap-2">Assumed values - not verified provider pricing <Badge tone="warning">Unverified</Badge></span>}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Provider charge (%)"><Input type="number" step="0.05" min={0} value={costs.providerPercent} onChange={(e) => setCosts({ ...costs, providerPercent: num(e.target.value) })} /></Field>
             <Field label="Provider fixed (KES)"><Input type="number" min={0} value={costs.providerFixed} onChange={(e) => setCosts({ ...costs, providerFixed: num(e.target.value) })} /></Field>
@@ -68,7 +68,7 @@ export function FeesPage() {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Field label="SMS alert price (KES)" hint="Charged per SMS"><Input type="number" step="0.1" min={0} value={sms.feePerSms} onChange={(e) => setSms({ ...sms, feePerSms: num(e.target.value) })} /></Field>
-            <Field label="SMS cost (KES)" hint="Gateway cost, mock"><Input type="number" step="0.1" min={0} value={sms.costPerSms} onChange={(e) => setSms({ ...sms, costPerSms: num(e.target.value) })} /></Field>
+            <Field label="SMS cost (KES)" hint="Gateway cost, assumed"><Input type="number" step="0.1" min={0} value={sms.costPerSms} onChange={(e) => setSms({ ...sms, costPerSms: num(e.target.value) })} /></Field>
           </div>
           <div className="mt-4 space-y-2">
             {plans.map((p, i) => p.name !== 'None' && (

@@ -201,7 +201,7 @@ function SettlementForm({ merchant }: { merchant: Merchant }) {
             ['To', <span className="font-medium">{method} · {displayDestination(method, nextDest)}</span>],
           ]} />
           {netError && <Notice tone="error">{netError}</Notice>}
-          <Notice tone="warning" title="Simulation only">In production this change would be confirmed with a one-time code sent to your registered phone, and Oryne would be notified. No code is sent in this demo.</Notice>
+          <Notice title="Oryne is notified">Changing where payouts go alerts Oryne operations, who may contact you to confirm the change before the next payout.</Notice>
         </div>
       </Modal>
     </>

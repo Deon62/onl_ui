@@ -32,12 +32,12 @@ export function ChannelsPage() {
   return (
     <>
       <PageHeader title="Payment channels" description="Collection rails and provider connections. All channels settle into the Oryne business Till." />
-      <div className="mb-6"><Notice tone="warning" title="Prototype - no live connections">Daraja, PayHero and Safaricom integrations are mocked. No API calls, STK pushes or transfers are made from this application.</Notice></div>
+      <div className="mb-6"><Notice tone="warning" title="Not connected yet">M-Pesa (Daraja) collections and payouts are connected in the payments phase. No STK pushes or transfers are made yet.</Notice></div>
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
         {[
-          ['M-Pesa Daraja API', 'Mock / Not connected', [['Environment', 'Sandbox (mock)'], ['Shortcode type', 'Business Till (Buy Goods)'], ['Collection Till', <Mono>{data.config.tillNumberMasked}</Mono>], ['Callback URL', <Mono className="text-[11.5px]">{data.config.callbackUrl}</Mono>]]],
-          ['PayHero', 'Mock / Not connected', [['Role', 'Payment provider (optional)'], ['Token balance', 'Not available'], ['Charge model', 'Configured in Fees & Charges'], ['Status', 'Awaiting credentials']]],
-          ['M-Pesa B2C payouts', 'Mock / Not connected', [['Use', 'Merchant payouts'], ['Per-transfer limit', 'KES 250,000'], ['Transfer cost (mock)', fmtKES(data.config.payout.providerCost)], ['Bank payouts', 'Manual via treasury']]],
+          ['M-Pesa Daraja API', 'Not connected', [['Environment', 'Sandbox (pending)'], ['Shortcode type', 'Business Till (Buy Goods)'], ['Collection Till', <Mono>{data.config.tillNumberMasked}</Mono>], ['Callback URL', <Mono className="text-[11.5px]">{data.config.callbackUrl}</Mono>]]],
+          ['PayHero', 'Not connected', [['Role', 'Payment provider (optional)'], ['Token balance', 'Not available'], ['Charge model', 'Configured in Fees & Charges'], ['Status', 'Awaiting credentials']]],
+          ['M-Pesa B2C payouts', 'Not connected', [['Use', 'Merchant payouts'], ['Per-transfer limit', 'KES 250,000'], ['Transfer cost (assumed)', fmtKES(data.config.payout.providerCost)], ['Bank payouts', 'Manual via treasury']]],
         ].map(([title, status, rows]) => (
           <Card key={title as string} title={title as string} actions={<Badge tone="neutral">{status as string}</Badge>}>
             <KeyValue rows={rows as [string, ReactNode][]} />

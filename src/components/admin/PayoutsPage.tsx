@@ -139,7 +139,7 @@ export function AdminPayoutsPage() {
         title="Send pending payouts via M-Pesa?"
         footer={<><Button onClick={() => setConfirmBatch(false)}>Cancel</Button><Button variant="primary" onClick={() => { stats.pendingB2c.forEach((p) => actions.remitPayout(p.id, 'B2C')); setConfirmBatch(false) }}>Send {stats.pendingB2c.length}</Button></>}
       >
-        <p className="text-[13px] text-muted">{stats.pendingB2c.length} M-Pesa payouts (B2C to phones, B2B to Tills and Paybills) totalling {fmtKES(stats.pendingB2c.reduce((s, p) => s + p.amount, 0))} will be sent. Bank payouts must be remitted manually. Simulation only - no money moves.</p>
+        <p className="text-[13px] text-muted">{stats.pendingB2c.length} M-Pesa payouts (B2C to phones, B2B to Tills and Paybills) totalling {fmtKES(stats.pendingB2c.reduce((s, p) => s + p.amount, 0))} will be sent. Bank payouts must be remitted manually. Payouts go live with the payments phase.</p>
       </Modal>
     </>
   )

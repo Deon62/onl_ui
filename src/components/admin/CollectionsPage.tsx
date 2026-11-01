@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, Check, Copy, Fingerprint, Link2, Play, Radio, ShieldCheck, Hash } from 'lucide-react'
+import { ArrowRight, Fingerprint, Link2, ShieldCheck, Hash } from 'lucide-react'
 import type { CallbackEvent, Transaction } from '../../types'
-import { useActions, useStore } from '../../store/AppStore'
+import { useStore } from '../../store/AppStore'
 import { deriveCallbacks, LIFECYCLE, lifecycleStage } from '../../lib/attribution'
-import { fmtAmount, fmtDateTime, fmtInt, fmtKES, fmtTime, maskPhone } from '../../lib/format'
+import { fmtAmount, fmtDateTime, fmtInt, fmtKES, maskPhone } from '../../lib/format'
 import { DAY } from '../../lib/dates'
 import { DataTable, type Column } from '../shared/DataTable'
 import { TransactionDrawer } from '../shared/TransactionDrawer'
-import { Badge, Button, Card, cx, Field, Input, Mono, Notice, PageHeader, SearchInput, Select, StatusBadge, Tabs, Toggle } from '../shared/ui'
-import { useChartColors } from '../shared/charts'
+import { Badge, Card, Mono, Notice, PageHeader, SearchInput, StatusBadge, Tabs } from '../shared/ui'
 
 type View = 'all' | 'unmatched' | 'duplicates' | 'failed' | 'callbacks'
 
@@ -81,7 +80,7 @@ export function CollectionsPage() {
         description="All merchants collect through one Oryne business Till. Each payment is matched to its merchant by the reference Oryne creates before sending the STK push."
       />
 
-      <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      <div className="mb-6">
         <Card title="How Oryne attributes a payment" subtitle="The identifiers that establish ownership">
           <ol className="space-y-3.5 text-[13px]">
             {[
@@ -100,7 +99,6 @@ export function CollectionsPage() {
             })}
           </ol>
         </Card>
-        <AttributionSimulator />
       </div>
 
       <Card title="Payment lifecycle" subtitle="Where payments initiated in the last 7 days currently sit" className="mb-6">
@@ -152,91 +150,3 @@ export function CollectionsPage() {
   )
 }
 
-/** Demonstrates two merchants collecting through the same Till at the same moment. */
-function AttributionSimulator() {
-  const { data } = useStore()
-  const actions = useActions()
-  const c = useChartColors()
-  const active = data.merchants.filter((m) => m.status === 'Active')
-  const [a, setA] = useState({ merchantId: active[0]?.id ?? '', amount: '5000' })
-  const [b, setB] = useState({ merchantId: active[1]?.id ?? '', amount: '2500' })
-  const [dup, setDup] = useState(true)
-  const [failSecond, setFailSecond] = useState(false)
-  const [ids, setIds] = useState<string[]>([])
-  const txs = ids.map((id) => data.transactions.find((t) => t.id === id)).filter(Boolean) as Transaction[]
-
-  const run = () => {
-    const first = actions.simulatePayment(a.merchantId, Number(a.amount), '254712' + String(Math.floor(100000 + Math.random() * 899999)), 'success', dup)
-    const second = actions.simulatePayment(b.merchantId, Number(b.amount), '254798' + String(Math.floor(100000 + Math.random() * 899999)), failSecond ? 'failure' : 'success')
-    setIds([first, second])
-  }
-  const valid = a.merchantId && b.merchantId && Number(a.amount) > 0 && Number(b.amount) > 0
-
-  return (
-    <Card
-      title="Concurrent payment simulator"
-      subtitle={`Two merchants, one Till (${data.config.tillNumberMasked}). Runs locally - no STK push is sent.`}
-      actions={<Badge tone="warning" icon={Radio}>Simulation</Badge>}
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
-        {[[a, setA, 'Payment A'], [b, setB, 'Payment B']].map(([v, set, label]) => {
-          const val = v as typeof a
-          const setter = set as typeof setA
-          return (
-            <div key={label as string} className="rounded-md border border-line bg-surface p-3">
-              <div className="mb-2 text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted">{label as string}</div>
-              <div className="space-y-2.5">
-                <Select value={val.merchantId} onChange={(e) => setter({ ...val, merchantId: e.target.value })} aria-label={`${label} merchant`}>
-                  {active.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </Select>
-                <Field label="Amount (KES)"><Input type="number" min={1} value={val.amount} onChange={(e) => setter({ ...val, amount: e.target.value })} /></Field>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-muted">
-        <label className="flex items-center gap-2"><Toggle checked={dup} onChange={setDup} label="Duplicate callback" /> Send a duplicate callback for A</label>
-        <label className="flex items-center gap-2"><Toggle checked={failSecond} onChange={setFailSecond} label="Fail payment B" /> Payment B fails</label>
-        <Button variant="primary" icon={Play} disabled={!valid} onClick={run} className="ml-auto">Initiate both</Button>
-      </div>
-
-      {txs.length > 0 && (
-        <div className="mt-4 space-y-2 border-t border-line-soft pt-4">
-          {txs.map((t) => {
-            const m = data.merchants.find((x) => x.id === t.merchantId)
-            const stage = t.status === 'Initiated' ? 0 : t.status === 'Pending' ? 1 : t.status === 'Successful' ? 3 : -1
-            return (
-              <div key={t.id} className="rounded-md border border-line bg-surface px-3.5 py-3 text-[12.5px]">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 font-medium text-ink">
-                    <span className="h-2.5 w-2.5 rounded-[2px]" style={{ background: c.merchantColor(t.merchantId) }} />
-                    {m?.name} · {fmtKES(t.amount)}
-                  </span>
-                  <StatusBadge status={t.status} />
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1">
-                  {['Initiated', 'STK sent', 'Callback', 'Credited'].map((s, i) => (
-                    <span key={s} className="flex items-center gap-1">
-                      <span className={cx('inline-flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px]', stage >= i ? 'bg-success-soft text-success' : stage === -1 && i >= 2 ? 'bg-error-soft text-error' : 'bg-subtle text-faint')}>
-                        {stage >= i && <Check size={10} strokeWidth={3} />}{s}
-                      </span>
-                      {i < 3 && <ArrowRight size={11} className="text-faint" />}
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-2 grid gap-x-4 gap-y-0.5 text-muted sm:grid-cols-2">
-                  <span>Reference <Mono>{t.reference}</Mono></span>
-                  <span>Receipt <Mono>{t.mpesaReceipt ?? '...'}</Mono></span>
-                  <span>Origin {t.domain} · {m?.id}</span>
-                  <span>{t.confirmedAt ? `Confirmed ${fmtTime(t.confirmedAt)}` : `Initiated ${fmtTime(t.initiatedAt)}`}{t.duplicateCallbacks ? ' · 1 duplicate ignored' : ''}</span>
-                </div>
-              </div>
-            )
-          })}
-          <p className="flex items-center gap-1.5 pt-1 text-[12px] text-muted"><Copy size={12} /> Same Till, independent references - each payment lands only in its own merchant's ledger.</p>
-        </div>
-      )}
-    </Card>
-  )
-}

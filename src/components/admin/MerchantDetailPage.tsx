@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { ArrowLeft, Ban, CheckCircle2, Eye, Pencil } from 'lucide-react'
+import { ArrowLeft, Ban, CheckCircle2, Eye, KeyRound, Pencil } from 'lucide-react'
 import type { Merchant } from '../../types'
 import { automatedRail, displayDestination } from '../../lib/settlement'
 import { useActions, useStore } from '../../store/AppStore'
@@ -13,8 +13,10 @@ import { SmsAlertsPanel } from '../shared/SmsAlertsPanel'
 import { axisProps, ChartCard, ChartTooltip, useChartColors } from '../shared/charts'
 import { ActivityList, BalanceStatement, PayoutsTable } from '../shared/FinancePanels'
 import { TransactionsExplorer } from '../shared/TransactionsExplorer'
-import { Button, Card, EmptyState, Field, Input, KeyValue, MerchantAvatar, Modal, Mono, Notice, Select, StatCard, StatusBadge, Tabs } from '../shared/ui'
+import { Button, Card, EmptyState, Field, Input, KeyValue, MerchantAvatar, Modal, Mono, Notice, Select, StatCard, StatusBadge, Tabs, Toggle } from '../shared/ui'
 import { MerchantFormModal } from './MerchantForm'
+import { CredentialsModal } from '../shared/Password'
+import type { LoginIssued } from '../../lib/api'
 
 type Tab = 'overview' | 'transactions' | 'payouts' | 'pricing' | 'collection' | 'activity'
 
@@ -25,6 +27,8 @@ export function MerchantDetailPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('overview')
   const [editing, setEditing] = useState(false)
+  const [sendingLogin, setSendingLogin] = useState(false)
+  const [issued, setIssued] = useState<LoginIssued | null>(null)
   const [confirmStatus, setConfirmStatus] = useState(false)
   const merchant = data.merchants.find((m) => m.id === id)
   const ledger = useMerchantLedger(merchant?.id ?? null)
@@ -51,6 +55,7 @@ export function MerchantDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Button icon={Eye} onClick={() => { viewAsMerchant(merchant.id); navigate('/merchant') }}>View as merchant</Button>
           <Button icon={Pencil} onClick={() => setEditing(true)}>Edit</Button>
+          <Button icon={KeyRound} onClick={() => setSendingLogin(true)}>Send login</Button>
           {merchant.status === 'Pending Review'
             ? <Button variant="primary" icon={CheckCircle2} onClick={() => actions.setMerchantStatus(merchant.id, 'Active')}>Approve & activate</Button>
             : <Button variant={suspend ? 'danger' : 'primary'} icon={suspend ? Ban : CheckCircle2} onClick={() => setConfirmStatus(true)}>{suspend ? 'Suspend' : 'Activate'}</Button>}
@@ -105,6 +110,8 @@ export function MerchantDetailPage() {
       {tab === 'activity' && <Card flush title="Merchant activity"><ActivityList items={data.activity.filter((a) => a.merchantId === merchant.id).slice(0, 60)} showMerchant={false} /></Card>}
 
       {editing && <MerchantFormModal open merchant={merchant} onClose={() => setEditing(false)} />}
+      {sendingLogin && <SendLoginModal merchant={merchant} onClose={() => setSendingLogin(false)} onIssued={(l) => { setSendingLogin(false); setIssued(l) }} />}
+      {issued && <CredentialsModal login={issued} business={merchant.name} onClose={() => setIssued(null)} />}
       <Modal
         open={confirmStatus}
         onClose={() => setConfirmStatus(false)}
@@ -227,8 +234,48 @@ function PricingTab({ merchant }: { merchant: Merchant }) {
             })}
           </tbody>
         </table>
-        <div className="p-5 pt-3"><Notice>Contribution = merchant fee - provider charge - allocated token and overhead costs. Negative values indicate the rate does not cover mock costs.</Notice></div>
+        <div className="p-5 pt-3"><Notice>Contribution = merchant fee - provider charge - allocated token and overhead costs. Negative values indicate the rate does not cover assumed costs.</Notice></div>
       </Card>
     </div>
+  )
+}
+
+/** Set a new password for the merchant's owner login (creating it if needed) and optionally email it. */
+function SendLoginModal({ merchant, onClose, onIssued }: { merchant: Merchant; onClose: () => void; onIssued: (l: LoginIssued) => void }) {
+  const actions = useActions()
+  const [email, setEmail] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const go = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      onIssued(await actions.sendLogin(merchant.id, email))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not issue the login.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="sm"
+      title="Send login details"
+      description={`Sets a new temporary password for the ${merchant.name} owner login. Their current password stops working.`}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" icon={KeyRound} loading={busy} onClick={() => void go()}>Set new password</Button></>}
+    >
+      <div className="space-y-4">
+        {error && <Notice tone="error" title="Could not issue the login">{error}</Notice>}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[13px] font-medium text-ink">Email it to the owner</div>
+            <div className="text-[12.5px] text-muted">You can also copy the password on the next screen.</div>
+          </div>
+          <Toggle checked={email} onChange={setEmail} label="Email login details" />
+        </div>
+      </div>
+    </Modal>
   )
 }
