@@ -15,7 +15,7 @@ npm run build
 Sign in with a Supabase user that has dashboard access. Admins (super admin, ops, finance) get the admin console and can switch to **Merchant** view to see any merchant's dashboard. Merchant users only see their own business.
 
 ### Live data
-Sign in with a Supabase user that has dashboard access; all data comes from the Oryne API (`https://apiv1.oryne.org`). Merchants, domains, status, pricing, business profile, payout accounts and schedule, SMS alert settings, merchant requests, logins, activity and notifications are live. Payments, payouts, expenses and SMS credit arrive with the payments phase; until then those pages show empty states and their actions say "not live yet".
+Sign in with a Supabase user that has dashboard access; all data comes from the Oryne API (`https://apiv1.oryne.org`). Merchants, domains, status, pricing, business profile, payout accounts and schedule, SMS alert settings, merchant requests, logins, expenses, activity and notifications are live. Payments, payouts and SMS credit arrive with the payments phase; until then those pages show empty states and their actions say "not live yet".
 
 ### Merchant requests
 "Request access" on the sign-in page (business, contact, phone, **website**) lands in **Admin → Merchant Requests**. **Set up account** creates the merchant with the details and pricing you choose, creates the owner's login with a generated password, and emails it via Resend. The password is also shown once with copy buttons, so you can send it yourself. **Send login** on a merchant's page issues a new password. Merchants change it under **Settings → Password**.

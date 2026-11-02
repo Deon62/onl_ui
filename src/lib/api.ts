@@ -6,7 +6,7 @@
  * The API speaks snake_case and integer cents; the dashboard speaks camelCase and KES, so mapping happens here.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { AccessRequest, ActivityLog, DataState, Merchant, Notification, PayoutMethod, PayoutSchedule, SettlementDetails } from '../types'
+import type { AccessRequest, ActivityLog, DataState, Expense, Merchant, Notification, PayoutMethod, PayoutSchedule, SettlementDetails } from '../types'
 import { DATA_VERSION, defaultConfig } from '../data/config'
 import { emptySettlement } from './settlement'
 
@@ -119,6 +119,9 @@ interface ApiAccessRequest {
   id: string; business: string; contact_name: string; email: string; phone: string; domain: string; volume: string; message: string
   status: AccessRequest['status']; merchant_id: string | null; reviewed_by: string | null; reviewed_at: string | null; created_at: string
 }
+interface ApiExpense {
+  id: string; category: string; description: string; amount_cents: number; provider: string; date: string; status: Expense['status']
+}
 
 /** A merchant owner's sign-in details. The password is shown once and never stored. */
 export interface LoginIssued { email: string; password: string; loginUrl: string; emailSent: boolean; emailError: string | null }
@@ -208,6 +211,19 @@ const toAccessRequest = (r: ApiAccessRequest): AccessRequest => ({
   message: r.message, status: r.status, at: r.created_at, reviewedBy: r.reviewed_by, reviewedAt: r.reviewed_at,
 })
 
+// The API stores a calendar date; the dashboard keeps ISO timestamps (noon local, so ranges never shift a day).
+const toExpense = (e: ApiExpense): Expense => ({
+  id: e.id, category: e.category as Expense['category'], description: e.description, amount: kes(e.amount_cents),
+  provider: e.provider, date: new Date(`${e.date}T12:00:00`).toISOString(), status: e.status,
+})
+const localDate = (iso: string) => {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const fromExpense = (e: Omit<Expense, 'id'>) => ({
+  category: e.category, description: e.description, amount_cents: cents(e.amount), provider: e.provider, date: localDate(e.date), status: e.status,
+})
+
 // ---------------------------------------------------------------------------
 // Loading the workspace
 // ---------------------------------------------------------------------------
@@ -215,16 +231,18 @@ const toAccessRequest = (r: ApiAccessRequest): AccessRequest => ({
 export const getMe = () => api<ApiMe>('/v1/me')
 
 /**
- * Everything the dashboard needs from the API, as a DataState. Collections (payments, payouts, expenses...)
+ * Everything the dashboard needs from the API, as a DataState. Collections (payments, payouts...)
  * arrive in later backend phases, so they start empty and the pages show their empty states.
  */
 export async function loadWorkspace(me: ApiMe): Promise<DataState> {
   const admin = ADMIN_ROLES.includes(me.role)
-  const [merchants, activity, notifications, accessRequests] = await Promise.all([
+  const [merchants, activity, notifications, accessRequests, expenses] = await Promise.all([
     admin ? api<ApiPage<ApiMerchant>>('/v1/admin/merchants?limit=200').then((p) => p.items) : Promise.resolve(me.merchant ? [me.merchant] : []),
     admin ? api<ApiPage<ApiActivity>>('/v1/admin/activity?limit=200').then((p) => p.items) : Promise.resolve([] as ApiActivity[]),
     api<ApiNotification[]>('/v1/notifications?limit=100'),
     admin ? api<ApiPage<ApiAccessRequest>>('/v1/admin/access-requests?limit=200').then((p) => p.items) : Promise.resolve([] as ApiAccessRequest[]),
+    // Tolerate an API that predates expenses so the rest of the workspace still loads.
+    admin ? api<ApiPage<ApiExpense>>('/v1/admin/expenses?limit=1000').then((p) => p.items, () => [] as ApiExpense[]) : Promise.resolve([] as ApiExpense[]),
   ])
   const byUuid = new Map(merchants.map((m) => [m.id, m.code]))
   const code = (uuid: string | null) => (uuid ? byUuid.get(uuid) ?? null : null)
@@ -235,7 +253,7 @@ export async function loadWorkspace(me: ApiMe): Promise<DataState> {
     merchants: merchants.map(toMerchant),
     transactions: [],
     payouts: [],
-    expenses: [],
+    expenses: expenses.map(toExpense),
     revenue: [],
     activity: activity.map((a): ActivityLog => ({
       id: a.id, actor: a.actor, role: ADMIN_ROLES.includes(a.role as ApiRole) ? 'admin' : a.role === 'system' ? 'system' : 'merchant',
@@ -317,6 +335,11 @@ export const live = {
 
   sendLogin: (merchantApiId: string, sendEmail: boolean) =>
     api<ApiLoginIssued>(`/v1/admin/merchants/${merchantApiId}/login`, { method: 'POST', body: { send_email: sendEmail } }).then(toLogin),
+
+  saveExpense: ({ id, ...e }: Omit<Expense, 'id'> & { id?: string }) =>
+    api<ApiExpense>(id ? `/v1/admin/expenses/${id}` : '/v1/admin/expenses', { method: id ? 'PUT' : 'POST', body: fromExpense(e) }).then(toExpense),
+
+  deleteExpense: (id: string) => api(`/v1/admin/expenses/${id}`, { method: 'DELETE' }),
 
   markRead: (audienceUuid: string) => api(`/v1/notifications/read?audience=${encodeURIComponent(audienceUuid)}`, { method: 'POST' }),
 }

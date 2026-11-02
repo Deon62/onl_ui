@@ -6,7 +6,7 @@ import {
 import { useStore } from '../../store/AppStore'
 import { fmtRelative } from '../../lib/format'
 import { cx, IconButton, MerchantAvatar } from './ui'
-import { LogoMark } from './LogoMark'
+import { OryneLogo } from './OryneLogo'
 import { RouteLoader } from './Loading'
 import { ROLE_LABEL, type ApiRole } from '../../lib/api'
 
@@ -16,7 +16,8 @@ export interface NavSection {
 }
 
 export function Logo({ light = true, compact = false }: { light?: boolean; compact?: boolean }) {
-  return <LogoMark tone={light ? 'light' : 'dark'} height={compact ? 22 : 28} />
+  // On the dark sidebar the letters go white; on light surfaces they follow the theme's ink colour.
+  return <OryneLogo height={compact ? 22 : 28} className={light ? 'text-white' : 'text-ink'} />
 }
 
 function Sidebar({ sections, footer, onNavigate }: { sections: NavSection[]; footer?: ReactNode; onNavigate?: () => void }) {

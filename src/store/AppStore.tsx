@@ -320,6 +320,23 @@ export function useActions() {
         update((d) => ({ ...d, notifications: d.notifications.map((n) => (n.audience === audience ? { ...n, read: true } : n)) }))
       },
 
+      saveExpense(e: Omit<Expense, 'id'> & { id?: string }) {
+        void live.saveExpense(e).then((saved) => {
+          update((d) => ({
+            ...d,
+            expenses: d.expenses.some((x) => x.id === saved.id) ? d.expenses.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...d.expenses],
+          }))
+          toast({ tone: 'success', title: e.id ? 'Expense updated' : 'Expense recorded' })
+        }, failed('Could not save expense'))
+      },
+
+      deleteExpense(id: string) {
+        void live.deleteExpense(id).then(() => {
+          update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== id) }))
+          toast({ tone: 'info', title: 'Expense deleted' })
+        }, failed('Could not delete expense'))
+      },
+
       // --- Payments phase -------------------------------------------------------------------------
       requestPayout(_merchantId: string, _amount: number, _destination: string, _initiatedBy: Payout['initiatedBy']): Payout | null {
         notYet('Payouts')
@@ -327,8 +344,6 @@ export function useActions() {
       },
       setPayoutStatus(_id: string, _status: Payout['status'], _failureReason?: string) { notYet('Payouts') },
       remitPayout(_id: string, _mode: 'B2C' | 'Manual') { notYet('Payouts') },
-      saveExpense(_e: Omit<Expense, 'id'> & { id?: string }) { notYet('Expenses') },
-      deleteExpense(_id: string) { notYet('Expenses') },
       /** No config endpoint yet: applies for this session only and says so. */
       updateConfig(patch: Partial<PlatformConfig>, title = 'Changes saved') {
         update((d) => ({ ...d, config: { ...d.config, ...patch } }))

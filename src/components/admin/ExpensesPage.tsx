@@ -16,6 +16,9 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'SMS & notifications', 'Refunds & reversals', 'Operational', 'Other',
 ]
 
+/** Expense IDs are UUIDs; show a short, readable form. */
+const shortId = (id: string) => `EXP-${id.slice(0, 8).toUpperCase()}`
+
 export function ExpensesPage() {
   const { data } = useStore()
   const actions = useActions()
@@ -29,7 +32,7 @@ export function ExpensesPage() {
   const s = useMemo(() => platformSummary(data.transactions, data.payouts, data.expenses, data.revenue, range), [data, range])
   const rows = useMemo(() => {
     const n = q.toLowerCase()
-    return data.expenses.filter((e) => inRange(e.date, range) && (!cat || e.category === cat) && (!n || `${e.id} ${e.description} ${e.provider}`.toLowerCase().includes(n)))
+    return data.expenses.filter((e) => inRange(e.date, range) && (!cat || e.category === cat) && (!n || `${shortId(e.id)} ${e.description} ${e.provider}`.toLowerCase().includes(n)))
   }, [data.expenses, range, cat, q])
 
   const byCat = useMemo(() => {
@@ -45,7 +48,7 @@ export function ExpensesPage() {
   const unpaid = rows.filter((e) => e.status !== 'Paid')
 
   const cols: Column<Expense>[] = [
-    { key: 'id', header: 'Expense ID', cell: (e) => <span className="mono">{e.id}</span>, sort: (e) => e.id },
+    { key: 'id', header: 'Expense ID', cell: (e) => <span className="mono">{shortId(e.id)}</span>, sort: (e) => e.id },
     { key: 'cat', header: 'Category', cell: (e) => e.category, sort: (e) => e.category, hideBelow: 'md' },
     { key: 'd', header: 'Description', cell: (e) => <div className="max-w-[320px] truncate" title={e.description}>{e.description}</div> },
     { key: 'p', header: 'Provider', cell: (e) => <span className="text-muted">{e.provider}</span>, hideBelow: 'lg' },
@@ -135,7 +138,7 @@ function ExpenseModal({ expense, onClose, onSave }: { expense: Partial<Expense>;
     <Modal
       open
       onClose={onClose}
-      title={expense.id ? `Edit ${expense.id}` : 'Add expense'}
+      title={expense.id ? `Edit ${shortId(expense.id)}` : 'Add expense'}
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!valid} onClick={() => onSave({ id: expense.id, category: f.category as ExpenseCategory, description: f.description.trim(), amount, provider: f.provider.trim(), date: new Date(f.date + 'T12:00:00').toISOString(), status: f.status as Expense['status'] })}>{expense.id ? 'Save changes' : 'Add expense'}</Button></>}
     >
       <div className="grid gap-4 sm:grid-cols-2">
