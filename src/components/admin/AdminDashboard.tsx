@@ -10,7 +10,6 @@ import { DateRangeFilter } from '../shared/DateRangeFilter'
 import { axisProps, ChartCard, ChartTooltip, Legend, useChartColors } from '../shared/charts'
 import { TransactionsExplorer } from '../shared/TransactionsExplorer'
 import { PageHeader, StatCard } from '../shared/ui'
-import { GettingStarted } from '../shared/GettingStarted'
 
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
 
@@ -81,18 +80,6 @@ export function AdminDashboard() {
         title="Platform overview"
         actions={<DateRangeFilter value={range} onChange={setRange} />}
       />
-      {data.transactions.length === 0 && (
-        <GettingStarted
-          id={`admin:${data.generatedAt}`}
-          title="Set up your platform"
-          steps={[
-            { title: 'Onboard your first merchant', description: 'Create the merchant account, or approve an access request.', to: '/admin/merchants', cta: 'Merchants', done: data.merchants.length > 0 },
-            { title: 'Confirm fees and charges', description: 'Default pricing, provider costs, payout and SMS fees.', to: '/admin/fees', cta: 'Review' },
-            { title: 'Record operating expenses', description: 'So revenue, costs and net profit are accurate from day one.', to: '/admin/expenses', cta: 'Add expense', done: data.expenses.length > 0 },
-            { title: 'Collect the first payment', description: 'Payments appear here as soon as a merchant checkout goes live on the Till.', done: false },
-          ]}
-        />
-      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Total processed" icon={Coins} value={fmtKES(summary.processed)} delta={pct(summary.processed, prev.processed)} />

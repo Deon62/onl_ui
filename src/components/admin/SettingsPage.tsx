@@ -26,7 +26,7 @@ export function AdminSettingsPage() {
             </Field>
           </div>
           <div className="mt-4 flex justify-end">
-            <Button variant="primary" disabled={Number(hours) === data.config.settlementHours && callback === data.config.callbackUrl} onClick={() => actions.updateConfig({ settlementHours: Math.max(0, Number(hours)), callbackUrl: callback }, 'Updated settlement settings')}>Save</Button>
+            <Button variant="primary" disabled={Number(hours) === data.config.settlementHours && callback === data.config.callbackUrl} onClick={() => actions.updateConfig({ settlementHours: Math.max(0, Number(hours)), callbackUrl: callback }, 'Settlement settings saved')}>Save</Button>
           </div>
         </Card>
         <Card title="Connection">

@@ -1,16 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, XCircle } from 'lucide-react'
 import { useStore } from '../../store/AppStore'
 import { useAllLedgers } from '../../store/selectors'
 import { tillReconciliation, type MerchantLedger } from '../../lib/finance'
-import { fmtAmount, fmtDateTime, fmtKES, round2 } from '../../lib/format'
+import { fmtAmount, fmtKES, round2 } from '../../lib/format'
 import { DataTable, type Column } from '../shared/DataTable'
-import { Badge, Card, Notice, PageHeader, Statement, StatusBadge } from '../shared/ui'
+import { Badge, Button, Card, PageHeader, Statement, StatCard, StatusBadge } from '../shared/ui'
 
 export function ReconciliationPage() {
   const { data } = useStore()
   const ledgers = useAllLedgers()
+  const [open, setOpen] = useState(false)
   const till = useMemo(() => tillReconciliation(data), [data])
   const names = Object.fromEntries(data.merchants.map((m) => [m.id, m.name]))
   const rows = Object.values(ledgers)
@@ -34,61 +35,75 @@ export function ReconciliationPage() {
     { key: 'chk', header: 'Check', align: 'center', cell: (l) => Math.abs(check(l)) < 0.01 ? <Badge tone="success" icon={CheckCircle2}>Balanced</Badge> : <Badge tone="error" icon={XCircle}>{fmtAmount(check(l))}</Badge> },
   ]
 
+  const items = [
+    { label: 'Unmatched Till payments', count: unmatched.length, amount: unmatched.reduce((s, t) => s + t.amount, 0), to: '/admin/collections', tone: 'Unmatched' },
+    { label: 'Payments pending over 30 min', count: stuck.length, amount: stuck.reduce((s, t) => s + t.amount, 0), to: '/admin/transactions', tone: 'Pending' },
+    { label: 'Payouts in progress', count: pendingPayouts.length, amount: pendingPayouts.reduce((s, p) => s + p.amount, 0), to: '/admin/payouts', tone: 'Processing' },
+    { label: 'Negative merchant balances', count: negative.length, amount: negative.reduce((s, l) => s + l.available, 0), to: '/admin/merchants', tone: 'Failed' },
+  ].filter((i) => i.count > 0)
+
   return (
     <>
       <PageHeader
         title="Reconciliation"
-        description={`Proves that money on the shared collection account equals what Oryne owes merchants, what is held in suspense, and Oryne's own retained share. Computed ${fmtDateTime(new Date())}.`}
+        actions={allBalanced
+          ? <Badge tone="success" icon={CheckCircle2}>All balanced</Badge>
+          : <Badge tone="error" icon={XCircle}>Differences found</Badge>}
       />
-      <div className="mb-6">
-        {allBalanced
-          ? <Notice tone="success" title="All ledgers reconcile">Collection account, merchant ledgers and suspense balance to the cent.</Notice>
-          : <Notice tone="error" title="Reconciliation differences detected">Review the items marked below before executing payouts.</Notice>}
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Held on Till" value={fmtKES(till.held)} hint={Math.abs(till.difference) >= 0.01 ? `Difference ${fmtKES(till.difference)}` : undefined} accent={Math.abs(till.difference) >= 0.01 ? 'var(--error)' : undefined} />
+        <StatCard label="Owed to merchants" value={fmtKES(till.merchantFundsOwed + till.smsCreditHeld)} />
+        <StatCard label="Suspense" value={fmtKES(till.suspense)} />
+        <StatCard label="Oryne share" value={fmtKES(till.oryneShare)} />
       </div>
-      <div className="mb-6 grid gap-4 xl:grid-cols-2">
-        <Card title="Collection account (Till) position" subtitle="All-time cash movements on the shared Till">
+
+      <Card
+        title="Till breakdown"
+        className="mb-6"
+        actions={<Button size="sm" variant="ghost" iconRight={open ? ChevronUp : ChevronDown} onClick={() => setOpen(!open)}>{open ? 'Hide' : 'Show'}</Button>}
+        bodyClassName={open ? undefined : 'hidden'}
+      >
+        <div className="grid gap-8 xl:grid-cols-2">
           <Statement lines={[
-            { label: 'Customer payments received', value: fmtKES(till.receipts - till.smsTopUpsReceived) },
-            { label: 'SMS credit top-ups received', value: fmtKES(till.smsTopUpsReceived) },
-            { label: 'Refunds and reversals returned to customers', value: fmtKES(till.refundsOut), kind: 'less' },
-            { label: 'Payouts sent to merchants (net)', value: fmtKES(till.payoutsSent), kind: 'less' },
-            { label: 'Provider collection charges', value: fmtKES(till.providerCharges), kind: 'less' },
-            { label: 'Payout transfer costs', value: fmtKES(till.payoutCosts), kind: 'less' },
-            { label: 'Funds held on collection account', value: fmtKES(till.held), kind: 'total' },
+            { label: 'Customer payments', value: fmtKES(till.receipts - till.smsTopUpsReceived) },
+            { label: 'SMS top-ups', value: fmtKES(till.smsTopUpsReceived) },
+            { label: 'Refunds', value: fmtKES(till.refundsOut), kind: 'less' },
+            { label: 'Payouts sent', value: fmtKES(till.payoutsSent), kind: 'less' },
+            { label: 'Provider charges', value: fmtKES(till.providerCharges), kind: 'less' },
+            { label: 'Transfer costs', value: fmtKES(till.payoutCosts), kind: 'less' },
+            { label: 'Held on Till', value: fmtKES(till.held), kind: 'total' },
           ]} />
-        </Card>
-        <Card title="Represented by" subtitle="Who the held funds belong to">
           <Statement lines={[
-            { label: 'Merchant funds owed', value: fmtKES(till.merchantFundsOwed), note: 'Available + settling + payouts in progress - a liability, not revenue' },
-            { label: 'Prepaid SMS credit held', value: fmtKES(till.smsCreditHeld), note: 'Unused SMS credit - recognised as revenue when alerts are sent' },
-            { label: 'Unattributed suspense', value: fmtKES(till.suspense), note: `${unmatched.length} unmatched payments awaiting resolution` },
-            { label: 'Oryne retained share', value: fmtKES(till.oryneShare), note: 'Fees and payout fees less provider charges and transfer costs' },
+            { label: 'Merchant funds', value: fmtKES(till.merchantFundsOwed) },
+            { label: 'Prepaid SMS credit', value: fmtKES(till.smsCreditHeld) },
+            { label: 'Suspense', value: fmtKES(till.suspense) },
+            { label: 'Oryne share', value: fmtKES(till.oryneShare) },
             { label: 'Total', value: fmtKES(till.merchantFundsOwed + till.smsCreditHeld + till.suspense + till.oryneShare), kind: 'total' },
             { label: 'Difference', value: fmtKES(till.difference), kind: 'muted' },
           ]} />
-        </Card>
-      </div>
+        </div>
+      </Card>
 
-      <Card flush title="Merchant ledger reconciliation" subtitle="Net earned - settling - paid out - in progress must equal available" className="mb-6">
+      <Card flush title="Merchant ledgers" className="mb-6">
         <DataTable columns={cols} rows={rows} rowKey={(l) => l.merchantId} />
       </Card>
 
-      <Card flush title="Open reconciliation items">
-        <ul className="divide-y divide-line-soft text-[13px]">
-          {[
-            { label: 'Unmatched Till payments in suspense', count: unmatched.length, amount: unmatched.reduce((s, t) => s + t.amount, 0), to: '/admin/collections', tone: unmatched.length ? 'Unmatched' : 'Matched' },
-            { label: 'Payments pending for more than 30 minutes (callback not received)', count: stuck.length, amount: stuck.reduce((s, t) => s + t.amount, 0), to: '/admin/transactions', tone: stuck.length ? 'Pending' : 'Matched' },
-            { label: 'Payouts pending or processing', count: pendingPayouts.length, amount: pendingPayouts.reduce((s, p) => s + p.amount, 0), to: '/admin/payouts', tone: pendingPayouts.length ? 'Processing' : 'Matched' },
-            { label: 'Merchants with negative available balance', count: negative.length, amount: negative.reduce((s, l) => s + l.available, 0), to: '/admin/merchants', tone: negative.length ? 'Failed' : 'Matched' },
-          ].map((i) => (
-            <li key={i.label}>
-              <Link to={i.to} className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-subtle/60">
-                <span className="flex items-center gap-3">{i.count ? <StatusBadge status={i.tone} /> : <Badge tone="success" icon={CheckCircle2}>Clear</Badge>} {i.label}</span>
-                <span className="num shrink-0 text-muted">{i.count} · {fmtKES(i.amount)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      <Card flush title="Open items">
+        {items.length === 0
+          ? <p className="flex items-center gap-2 px-5 py-3.5 text-[13px] text-muted"><CheckCircle2 size={15} className="text-success" /> Nothing to resolve</p>
+          : (
+            <ul className="divide-y divide-line-soft text-[13px]">
+              {items.map((i) => (
+                <li key={i.label}>
+                  <Link to={i.to} className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-subtle/60">
+                    <span className="flex items-center gap-3"><StatusBadge status={i.tone} /> {i.label}</span>
+                    <span className="num shrink-0 text-muted">{i.count} · {fmtKES(i.amount)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
       </Card>
     </>
   )

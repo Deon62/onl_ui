@@ -329,7 +329,11 @@ export function useActions() {
       remitPayout(_id: string, _mode: 'B2C' | 'Manual') { notYet('Payouts') },
       saveExpense(_e: Omit<Expense, 'id'> & { id?: string }) { notYet('Expenses') },
       deleteExpense(_id: string) { notYet('Expenses') },
-      updateConfig(_patch: Partial<PlatformConfig>, _note?: string) { notYet('Platform configuration') },
+      /** No config endpoint yet: applies for this session only and says so. */
+      updateConfig(patch: Partial<PlatformConfig>, title = 'Changes saved') {
+        update((d) => ({ ...d, config: { ...d.config, ...patch } }))
+        toast({ tone: 'success', title, body: 'Applies to this session. Server storage arrives with the config API.' })
+      },
       attributeTransaction(_txId: string, _merchantId: string) { notYet('Attribution') },
       refundTransaction(_txId: string) { notYet('Refunds') },
       createPaymentLink(_merchantId: string, _title: string, _amount: number | null) { notYet('Payment links') },

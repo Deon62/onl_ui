@@ -12,7 +12,6 @@ import { axisProps, ChartCard, ChartTooltip, Legend, useChartColors } from '../s
 import { BalanceDonut } from '../shared/FinancePanels'
 import { TransactionsExplorer } from '../shared/TransactionsExplorer'
 import { Button, Card, Notice, PageHeader, StatCard } from '../shared/ui'
-import { GettingStarted } from '../shared/GettingStarted'
 import { PayoutRequestModal } from '../shared/PayoutRequestModal'
 
 export function MerchantDashboard() {
@@ -52,24 +51,10 @@ export function MerchantDashboard() {
   }, [mtx, data.payouts, range, merchant?.id])
 
   if (!merchant || !ledger) return null
-  const hasPayments = data.transactions.some((t) => t.merchantId === merchant.id && t.status === 'Successful')
   const xInterval = charts.rows.length > 16 ? Math.ceil(charts.rows.length / 8) - 1 : 0
   return (
     <>
       <PageHeader title="Dashboard" actions={<Button variant="primary" icon={Banknote} onClick={() => setPayoutOpen(true)} disabled={merchant.status !== 'Active'}>Request payout</Button>} />
-      {!hasPayments && (
-        <GettingStarted
-          id={`merchant:${merchant.id}:${data.generatedAt}`}
-          title={`Welcome to Oryne, ${merchant.contactName.split(' ')[0]}`}
-          steps={[
-            { title: 'Complete your business profile', description: 'Contact phone and industry, used on receipts and for support.', to: '/merchant/profile', cta: 'Complete', done: !!merchant.phone && !!merchant.industry },
-            { title: 'Add your settlement account', description: 'The M-Pesa number, Till, Paybill or bank account your payouts go to.', to: '/merchant/settlement', cta: 'Add account', done: !!merchant.payoutDestination },
-            { title: 'Create a payment link', description: 'Share it on WhatsApp, email or social media to get paid without a website.', to: '/merchant/payment-links', cta: 'Create link', done: data.paymentLinks.some((l) => l.merchantId === merchant.id) },
-            { title: 'Turn on SMS alerts', description: 'Get a text every time a customer pays you.', to: '/merchant/sms', cta: 'Set up', done: merchant.smsAlerts.enabled, optional: true },
-            { title: 'Receive your first payment', description: 'Oryne is connecting M-Pesa checkout to your website. We will notify you when it is live.', done: false },
-          ]}
-        />
-      )}
       {merchant.status !== 'Active' && <div className="mb-6"><Notice tone="error" title={`Account ${merchant.status.toLowerCase()}`}>Collections and payouts are paused.</Notice></div>}
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total collections" icon={Coins} value={fmtKES(ledger.grossCollections)} />

@@ -251,6 +251,8 @@ export interface CostConfig {
 export interface PlatformConfig {
   defaultPricing: PricingPlan
   costs: CostConfig
+  /** When an admin confirmed the provider costs against real provider pricing */
+  costsVerifiedAt?: string | null
   payout: { feeFixed: number; providerCost: number; minAmount: number }
   /** Optional SMS payment alerts: price charged to merchants and Oryne's cost per SMS */
   sms: { feePerSms: number; costPerSms: number }

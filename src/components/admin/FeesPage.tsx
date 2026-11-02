@@ -1,15 +1,33 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Calculator, RotateCcw } from 'lucide-react'
+import { BadgeCheck, Calculator } from 'lucide-react'
 import type { CostConfig, PlatformConfig, PricingPlan } from '../../types'
 import { useActions, useStore } from '../../store/AppStore'
 import { calcFee, describePricing, txEconomics } from '../../lib/finance'
-import { fmtCompact, fmtKES, fmtPct, round2 } from '../../lib/format'
+import { fmtCompact, fmtDate, fmtKES, fmtPct, round2 } from '../../lib/format'
 import { axisProps, ChartCard, ChartTooltip, Legend, useChartColors } from '../shared/charts'
 import { Badge, Button, Card, Field, Input, Notice, PageHeader, Statement, Toggle } from '../shared/ui'
 
 const num = (v: string) => (v === '' ? 0 : Number(v))
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+/** Card with its own Discard / Save, shown only once something in it changed. */
+function EditCard({ title, subtitle, dirty, onSave, onDiscard, extra, children }: {
+  title: ReactNode; subtitle?: ReactNode; dirty: boolean; onSave: () => void; onDiscard: () => void; extra?: ReactNode; children: ReactNode
+}) {
+  return (
+    <Card
+      title={title}
+      subtitle={subtitle}
+      actions={dirty
+        ? <><Button size="sm" onClick={onDiscard}>Discard</Button><Button size="sm" variant="primary" onClick={onSave}>Save</Button></>
+        : extra}
+    >
+      {children}
+    </Card>
+  )
+}
 
 export function FeesPage() {
   const { data } = useStore()
@@ -18,73 +36,78 @@ export function FeesPage() {
   const [pricing, setPricing] = useState<PricingPlan>({ ...cfg.defaultPricing })
   const [costs, setCosts] = useState<CostConfig>({ ...cfg.costs })
   const [payout, setPayout] = useState({ ...cfg.payout })
+  const [sms, setSms] = useState({ ...cfg.sms })
   const [plans, setPlans] = useState(cfg.subscriptionPlans.map((p) => ({ ...p })))
   const [competitor, setCompetitor] = useState({ ...cfg.competitor })
-  const [sms, setSms] = useState({ ...cfg.sms })
-  const dirty = JSON.stringify({ pricing, costs, payout, plans, competitor, sms }) !== JSON.stringify({ pricing: cfg.defaultPricing, costs: cfg.costs, payout: cfg.payout, plans: cfg.subscriptionPlans, competitor: cfg.competitor, sms: cfg.sms })
 
-  const save = () => {
-    const patch: Partial<PlatformConfig> = { defaultPricing: pricing, costs, payout, subscriptionPlans: plans, competitor, sms }
-    actions.updateConfig(patch, 'Updated pricing and cost configuration')
-  }
+  const extrasDirty = !same({ payout, sms, plans }, { payout: cfg.payout, sms: cfg.sms, plans: cfg.subscriptionPlans })
+  const verifiedAt = cfg.costsVerifiedAt
 
   return (
     <>
-      <PageHeader
-        title="Pricing & fees"
-        description="Configure merchant pricing, provider cost assumptions and payout charges. Changes apply to new transactions; historical fees are never recalculated."
-        actions={dirty && (
-          <>
-            <Button icon={RotateCcw} onClick={() => { setPricing({ ...cfg.defaultPricing }); setCosts({ ...cfg.costs }); setPayout({ ...cfg.payout }); setPlans(cfg.subscriptionPlans.map((p) => ({ ...p }))); setCompetitor({ ...cfg.competitor }); setSms({ ...cfg.sms }) }}>Discard</Button>
-            <Button variant="primary" onClick={save}>Save configuration</Button>
-          </>
-        )}
-      />
+      <PageHeader title="Pricing & fees" />
 
       <div className="mb-6 grid gap-4 xl:grid-cols-3">
-        <Card title="Default merchant pricing" subtitle="Applied to new merchants">
+        <EditCard
+          title="Default pricing"
+          subtitle={describePricing(pricing)}
+          dirty={!same(pricing, cfg.defaultPricing)}
+          onDiscard={() => setPricing({ ...cfg.defaultPricing })}
+          onSave={() => actions.updateConfig({ defaultPricing: pricing }, 'Default pricing saved')}
+        >
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Percentage fee (%)"><Input type="number" step="0.05" min={0} value={pricing.percentRate} onChange={(e) => setPricing({ ...pricing, percentRate: num(e.target.value) })} /></Field>
-            <Field label="Fixed fee (KES)"><Input type="number" min={0} value={pricing.fixedFee} onChange={(e) => setPricing({ ...pricing, fixedFee: num(e.target.value) })} /></Field>
-            <Field label="Minimum fee"><Input type="number" min={0} value={pricing.minFee} onChange={(e) => setPricing({ ...pricing, minFee: num(e.target.value) })} /></Field>
-            <Field label="Maximum fee" hint="0 = no cap"><Input type="number" min={0} value={pricing.maxFee} onChange={(e) => setPricing({ ...pricing, maxFee: num(e.target.value) })} /></Field>
+            <Field label="Fee (%)"><Input type="number" step="0.05" min={0} value={pricing.percentRate} onChange={(e) => setPricing({ ...pricing, percentRate: num(e.target.value) })} /></Field>
+            <Field label="Fixed (KES)"><Input type="number" min={0} value={pricing.fixedFee} onChange={(e) => setPricing({ ...pricing, fixedFee: num(e.target.value) })} /></Field>
+            <Field label="Min fee"><Input type="number" min={0} value={pricing.minFee} onChange={(e) => setPricing({ ...pricing, minFee: num(e.target.value) })} /></Field>
+            <Field label="Max fee" hint="0 = no cap"><Input type="number" min={0} value={pricing.maxFee} onChange={(e) => setPricing({ ...pricing, maxFee: num(e.target.value) })} /></Field>
           </div>
-          <p className="mt-3 text-[12.5px] text-muted">{describePricing(pricing)}</p>
-        </Card>
-        <Card title="Provider cost assumptions" subtitle={<span className="flex items-center gap-2">Assumed values - not verified provider pricing <Badge tone="warning">Unverified</Badge></span>}>
+        </EditCard>
+
+        <EditCard
+          title={<span className="flex items-center gap-2">Provider costs {verifiedAt ? <Badge tone="success" icon={BadgeCheck}>Verified</Badge> : <Badge tone="warning">Unverified</Badge>}</span>}
+          subtitle={verifiedAt ? `Verified ${fmtDate(verifiedAt)}` : 'Confirm against real provider pricing'}
+          dirty={!same(costs, cfg.costs)}
+          onDiscard={() => setCosts({ ...cfg.costs })}
+          // New numbers need verifying again.
+          onSave={() => actions.updateConfig({ costs, costsVerifiedAt: null }, 'Provider costs saved')}
+          extra={verifiedAt
+            ? <Button size="sm" onClick={() => actions.updateConfig({ costsVerifiedAt: null }, 'Marked unverified')}>Unverify</Button>
+            : <Button size="sm" variant="primary" icon={BadgeCheck} onClick={() => actions.updateConfig({ costsVerifiedAt: new Date().toISOString() }, 'Provider costs verified')}>Verify</Button>}
+        >
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Provider charge (%)"><Input type="number" step="0.05" min={0} value={costs.providerPercent} onChange={(e) => setCosts({ ...costs, providerPercent: num(e.target.value) })} /></Field>
-            <Field label="Provider fixed (KES)"><Input type="number" min={0} value={costs.providerFixed} onChange={(e) => setCosts({ ...costs, providerFixed: num(e.target.value) })} /></Field>
-            <Field label="Token cost / tx"><Input type="number" step="0.1" min={0} value={costs.tokenCostPerTx} onChange={(e) => setCosts({ ...costs, tokenCostPerTx: num(e.target.value) })} /></Field>
-            <Field label="Other allocated / tx"><Input type="number" step="0.1" min={0} value={costs.otherCostPerTx} onChange={(e) => setCosts({ ...costs, otherCostPerTx: num(e.target.value) })} /></Field>
+            <Field label="Charge (%)"><Input type="number" step="0.05" min={0} value={costs.providerPercent} onChange={(e) => setCosts({ ...costs, providerPercent: num(e.target.value) })} /></Field>
+            <Field label="Fixed (KES)"><Input type="number" min={0} value={costs.providerFixed} onChange={(e) => setCosts({ ...costs, providerFixed: num(e.target.value) })} /></Field>
+            <Field label="Token / tx"><Input type="number" step="0.1" min={0} value={costs.tokenCostPerTx} onChange={(e) => setCosts({ ...costs, tokenCostPerTx: num(e.target.value) })} /></Field>
+            <Field label="Other / tx"><Input type="number" step="0.1" min={0} value={costs.otherCostPerTx} onChange={(e) => setCosts({ ...costs, otherCostPerTx: num(e.target.value) })} /></Field>
           </div>
-          <p className="mt-3 text-[12.5px] text-muted">Token and other allocations are used for unit economics only and are not double-counted as operating costs.</p>
-        </Card>
-        <Card title="Payouts, SMS & subscriptions">
+        </EditCard>
+
+        <EditCard
+          title="Payouts, SMS & plans"
+          dirty={extrasDirty}
+          onDiscard={() => { setPayout({ ...cfg.payout }); setSms({ ...cfg.sms }); setPlans(cfg.subscriptionPlans.map((p) => ({ ...p }))) }}
+          onSave={() => actions.updateConfig({ payout, sms, subscriptionPlans: plans }, 'Payout, SMS and plan fees saved')}
+        >
           <div className="grid grid-cols-3 gap-3">
             <Field label="Payout fee"><Input type="number" min={0} value={payout.feeFixed} onChange={(e) => setPayout({ ...payout, feeFixed: num(e.target.value) })} /></Field>
             <Field label="Transfer cost"><Input type="number" min={0} value={payout.providerCost} onChange={(e) => setPayout({ ...payout, providerCost: num(e.target.value) })} /></Field>
             <Field label="Min payout"><Input type="number" min={0} value={payout.minAmount} onChange={(e) => setPayout({ ...payout, minAmount: num(e.target.value) })} /></Field>
+            <Field label="SMS price"><Input type="number" step="0.1" min={0} value={sms.feePerSms} onChange={(e) => setSms({ ...sms, feePerSms: num(e.target.value) })} /></Field>
+            <Field label="SMS cost"><Input type="number" step="0.1" min={0} value={sms.costPerSms} onChange={(e) => setSms({ ...sms, costPerSms: num(e.target.value) })} /></Field>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Field label="SMS alert price (KES)" hint="Charged per SMS"><Input type="number" step="0.1" min={0} value={sms.feePerSms} onChange={(e) => setSms({ ...sms, feePerSms: num(e.target.value) })} /></Field>
-            <Field label="SMS cost (KES)" hint="Gateway cost, assumed"><Input type="number" step="0.1" min={0} value={sms.costPerSms} onChange={(e) => setSms({ ...sms, costPerSms: num(e.target.value) })} /></Field>
-          </div>
-          <div className="mt-4 space-y-2">
+          <div className="mt-3 grid grid-cols-3 gap-3">
             {plans.map((p, i) => p.name !== 'None' && (
-              <div key={p.name} className="flex items-center gap-3">
-                <span className="w-24 text-[13px]">{p.name}</span>
-                <Input type="number" min={0} value={p.monthlyFee} onChange={(e) => setPlans(plans.map((x, j) => (j === i ? { ...x, monthlyFee: num(e.target.value) } : x)))} aria-label={`${p.name} monthly fee`} />
-                <span className="text-[12px] text-muted">/month</span>
-              </div>
+              <Field key={p.name} label={`${p.name} / mo`}>
+                <Input type="number" min={0} value={p.monthlyFee} onChange={(e) => setPlans(plans.map((x, j) => (j === i ? { ...x, monthlyFee: num(e.target.value) } : x)))} />
+              </Field>
             ))}
           </div>
-        </Card>
+        </EditCard>
       </div>
 
       <Simulator pricing={pricing} costs={costs} sms={sms} competitor={competitor} setCompetitor={setCompetitor} />
 
-      <Card flush title="Merchant-specific rates" className="mt-6" subtitle="Override the default per merchant from the merchant profile">
+      <Card flush title="Merchant-specific rates" className="mt-6" subtitle="Set on each merchant profile">
         <table className="w-full text-[13px]">
           <thead><tr className="border-b border-line text-[11.5px] uppercase tracking-[0.05em] text-muted"><th className="px-5 py-2.5 text-left font-medium">Merchant</th><th className="px-4 py-2.5 text-left font-medium">Pricing</th><th className="hidden px-4 py-2.5 text-right font-medium sm:table-cell">Fee on KES 5,000</th><th className="px-5 py-2.5 text-right font-medium">Subscription</th></tr></thead>
           <tbody>
